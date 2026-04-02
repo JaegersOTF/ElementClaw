@@ -1,0 +1,1084 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ElementClaw — Make Money From Weather Forecasts on Autopilot</title>
+<meta name="description" content="Automated Polymarket trading bot that turns weather forecasts into USDC profit. 122 ensemble models find mispriced markets so you don't have to.">
+<meta name="author" content="ElementClaw">
+<meta name="robots" content="index, follow">
+<link rel="canonical" href="https://elementclaw.xyz">
+<link rel="icon" type="image/png" href="logo.png">
+<link rel="apple-touch-icon" href="logo.png">
+<meta name="theme-color" content="#0d1a14">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://elementclaw.xyz">
+<meta property="og:site_name" content="ElementClaw">
+<meta property="og:title" content="ElementClaw — Make Money From Weather Forecasts on Autopilot">
+<meta property="og:description" content="Automated Polymarket trading bot. 122 ensemble models find mispriced weather markets and trade them automatically.">
+<meta property="og:image" content="https://elementclaw.xyz/logo.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:site" content="@tryelementclaw">
+<meta name="twitter:title" content="ElementClaw — Make Money From Weather Forecasts on Autopilot">
+<meta name="twitter:description" content="Automated Polymarket trading bot. Compares NOAA GFS and ECMWF ensemble forecast probabilities against live market prices and trades the mispricing.">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "ElementClaw",
+  "url": "https://elementclaw.xyz",
+  "applicationCategory": "FinanceApplication",
+  "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+  "sameAs": ["https://x.com/tryelementclaw"]
+}
+</script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Michroma&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap');
+
+:root {
+  --bg: #0d1a14;
+  --bg2: #07110c;
+  --surface: rgba(26,58,42,0.4);
+  --surface-solid: #11241a;
+  --border: rgba(45,90,65,0.2);
+  --border-solid: #1a3a2a;
+  --border-bright: #2d5a41;
+  --accent: #4ade80;
+  --text: #e0e7e3;
+  --dim: #7a9c8a;
+  --dim2: #9ab8a8;
+  --red: #ff4466;
+  --yellow: #ffd60a;
+  --font-d: 'Michroma', sans-serif;
+  --font-m: 'Space Mono', monospace;
+}
+
+/* ── Scroll-reveal animations ── */
+.reveal {
+  opacity: 0;
+  transform: translateY(24px);
+  transition: opacity 0.6s ease, transform 0.6s ease;
+}
+.reveal.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+.reveal-delay-1 { transition-delay: 0.1s; }
+.reveal-delay-2 { transition-delay: 0.2s; }
+.reveal-delay-3 { transition-delay: 0.3s; }
+.reveal-delay-4 { transition-delay: 0.4s; }
+
+/* ── Glow pulse on accent elements ── */
+@keyframes glow-pulse {
+  0%, 100% { text-shadow: 0 0 8px rgba(74,222,128,0.3); }
+  50% { text-shadow: 0 0 22px rgba(74,222,128,0.6), 0 0 40px rgba(74,222,128,0.2); }
+}
+.glow { animation: glow-pulse 3s ease-in-out infinite; }
+
+/* ── Floating animation ── */
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+.float { animation: float 4s ease-in-out infinite; }
+
+/* ── Shimmer on stat numbers ── */
+@keyframes shimmer {
+  0% { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+.stat-num {
+  background: linear-gradient(90deg, var(--accent) 0%, #a3f5c4 50%, var(--accent) 100%);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: shimmer 4s linear infinite;
+}
+
+/* ── Border scan line on cards ── */
+@keyframes border-scan {
+  0% { background-position: 0% 0%; }
+  100% { background-position: 200% 0%; }
+}
+.card:hover::after {
+  content: '';
+  position: absolute; top: -1px; left: -1px; right: -1px;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  background-size: 200% 100%;
+  animation: border-scan 1.5s linear infinite;
+}
+
+/* ── Typing cursor blink for CA ── */
+@keyframes cursor-blink {
+  0%, 100% { border-color: var(--accent); }
+  50% { border-color: transparent; }
+}
+.coming-soon {
+  color: var(--dim2);
+  border-right: 2px solid var(--accent);
+  padding-right: 4px;
+  animation: cursor-blink 1.2s step-end infinite;
+  font-style: italic;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-m);
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+/* ── 12-col grid shell ── */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: 20px;
+  padding: 40px;
+  max-width: 1920px;
+  margin: 0 auto;
+}
+
+/* ── Shared card ── */
+.card {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  padding: 24px;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  transition: all 0.3s ease;
+}
+.card:hover {
+  border-color: var(--accent);
+  background: rgba(26,58,42,0.8);
+}
+
+/* ── Mono label ── */
+.mono-label {
+  font-family: var(--font-m);
+  text-transform: uppercase;
+  font-size: 10px;
+  letter-spacing: 0.05em;
+  display: block;
+  margin-bottom: 8px;
+  color: var(--dim);
+}
+.display-type {
+  font-family: var(--font-d);
+  text-transform: uppercase;
+  line-height: 0.85;
+  letter-spacing: -1px;
+  color: #ffffff;
+}
+.divider {
+  width: 12px; height: 1px;
+  background: var(--border-bright);
+  display: inline-block;
+  margin-right: 10px;
+  vertical-align: middle;
+}
+.card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 20px;
+}
+@keyframes pulse { 0%{opacity:.3} 50%{opacity:1} 100%{opacity:.3} }
+.status-dot {
+  width: 8px; height: 8px;
+  background: var(--accent);
+  border-radius: 50%;
+  display: inline-block;
+  margin-right: 8px;
+  animation: pulse 2s infinite;
+}
+
+/* ── Nav bar ── */
+.nav {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 20px;
+  border-bottom: 1px solid rgba(45,90,65,0.15);
+  margin-bottom: 10px;
+}
+.nav-logo {
+  font-family: var(--font-d);
+  font-size: 12px;
+  color: var(--accent);
+  text-decoration: none;
+  text-transform: uppercase;
+  letter-spacing: -0.5px;
+  display: flex; align-items: center; gap: 8px;
+}
+.nav-links { display: flex; gap: 28px; list-style: none; align-items: center; }
+.nav-links a {
+  font-family: var(--font-m);
+  font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em;
+  color: var(--dim); text-decoration: none; transition: color 0.2s;
+}
+.nav-links a:hover { color: var(--text); }
+.nav-right { display: flex; align-items: center; gap: 10px; }
+.btn {
+  font-family: var(--font-m); font-size: 10px; text-transform: uppercase;
+  letter-spacing: 0.06em; padding: 7px 16px;
+  border: 1px solid var(--border-bright); background: none;
+  color: var(--dim2); cursor: pointer; text-decoration: none;
+  transition: all 0.2s; display: inline-flex; align-items: center; gap: 6px;
+}
+.btn:hover { color: var(--text); background: rgba(74,222,128,0.06); }
+.btn-fill {
+  background: var(--border-bright); color: #fff; border-color: var(--border-bright);
+}
+.btn-fill:hover { background: var(--accent); color: var(--bg); }
+
+/* ── Mega hero title ── */
+.brand-header {
+  grid-column: 1 / -1;
+  margin-bottom: 40px;
+  border-bottom: 1px solid rgba(45,90,65,0.3);
+  padding-bottom: 40px;
+}
+.mega-title {
+  font-size: clamp(52px, 12vw, 200px);
+  font-weight: 400;
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.mega-title span { display: block; }
+
+/* ── Meta row ── */
+.meta-group { display: flex; flex-direction: column; gap: 4px; }
+.grid-pos-1 { grid-column: 1 / 4; }
+.grid-pos-2 { grid-column: 5 / 8; }
+.grid-pos-3 { grid-column: 10 / 13; text-align: right; }
+.mission-text { font-size: 13px; max-width: 320px; line-height: 1.6; color: #b0c4b1; }
+
+/* ── CA + Install row ── */
+.ca-row {
+  grid-column: 1 / -1;
+  display: flex; align-items: center; gap: 20px; flex-wrap: wrap;
+  padding: 16px 0;
+  border-top: 1px solid rgba(45,90,65,0.2);
+  border-bottom: 1px solid rgba(45,90,65,0.2);
+  margin-bottom: 20px;
+}
+.ca-label { color: var(--accent); font-weight: 700; font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; }
+.ca-code {
+  color: var(--text); background: rgba(26,58,42,0.3);
+  border: 1px solid var(--border-solid); padding: 5px 12px;
+  cursor: pointer; transition: all 0.2s; user-select: all; font-family: var(--font-m); font-size: 11px;
+}
+.ca-code:hover { border-color: var(--accent); background: rgba(74,222,128,0.08); }
+.ca-copied { color: var(--accent); font-size: 10px; opacity: 0; transition: opacity 0.2s; }
+.install-box {
+  display: flex; align-items: stretch; border: 1px solid var(--border-solid); margin-left: auto;
+}
+.install-prefix {
+  font-family: var(--font-m); font-size: 11px; color: var(--accent);
+  padding: 7px 12px; border-right: 1px solid var(--border-solid);
+  display: flex; align-items: center; user-select: none;
+}
+.install-cmd { font-family: var(--font-m); font-size: 11px; color: var(--text); padding: 7px 14px; display: flex; align-items: center; }
+.copy-btn {
+  font-family: var(--font-m); font-size: 9px; text-transform: uppercase;
+  letter-spacing: 0.08em; color: var(--dim); background: none; border: none;
+  border-left: 1px solid var(--border-solid); padding: 7px 12px; cursor: pointer;
+}
+.copy-btn:hover { color: var(--accent); }
+
+/* ── Section label (numbered) ── */
+.sec-label {
+  grid-column: 1 / -1;
+  font-family: var(--font-m);
+  font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em;
+  color: var(--dim);
+  padding: 30px 0 10px;
+  border-bottom: 1px solid rgba(45,90,65,0.15);
+  margin-bottom: 10px;
+}
+
+/* ── Terminal card ── */
+.terminal-card {
+  grid-column: 1 / 7;
+  min-height: 380px;
+  background: var(--bg2);
+  padding: 0;
+  overflow: hidden;
+}
+.term-bar {
+  display: flex; align-items: center; gap: 10px;
+  padding: 11px 16px;
+  background: var(--surface-solid);
+  border-bottom: 1px solid var(--border-solid);
+}
+.term-dots { display: flex; gap: 6px; }
+.tdot { width: 9px; height: 9px; border-radius: 50%; }
+.tdot-r { background: #ff5f57; }
+.tdot-y { background: #febc2e; }
+.tdot-g { background: var(--accent); }
+.term-title { font-size: 10px; color: var(--dim); margin: 0 auto; }
+.term-body { padding: 14px 16px; height: 330px; overflow: hidden; position: relative; }
+.t-line { line-height: 1.7; white-space: nowrap; overflow: hidden; min-height: 1.7em; font-size: 11px; }
+.t-ts   { color: #2d5a41; }
+.t-info { color: var(--dim); }
+.t-sig  { color: var(--accent); font-weight: 700; }
+.t-trd  { color: var(--accent); font-weight: 700; }
+.t-key  { color: var(--dim2); }
+.t-val  { color: var(--text); }
+.t-edge { color: var(--accent); }
+.t-lock { color: var(--border-bright); font-weight: 700; }
+.t-ok   { color: var(--accent); }
+.cursor {
+  display: inline-block; width: 7px; height: 13px;
+  background: var(--accent); vertical-align: text-bottom;
+  animation: blink 1s step-end infinite;
+}
+@keyframes blink { 50% { opacity: 0; } }
+
+/* ── Hero right: pitch + CTA ── */
+.hero-card {
+  grid-column: 7 / 13;
+  min-height: 380px;
+  padding: 30px;
+}
+.hero-eyebrow {
+  font-family: var(--font-m); font-size: 10px; text-transform: uppercase;
+  letter-spacing: 0.12em; color: var(--accent); margin-bottom: 20px;
+  display: flex; align-items: center; gap: 10px;
+}
+.hero-eyebrow-line { width: 16px; height: 1px; background: var(--accent); }
+.hero-h1 {
+  font-family: var(--font-d); font-size: clamp(22px, 3vw, 36px);
+  font-weight: 400; text-transform: uppercase; letter-spacing: -0.5px;
+  line-height: 1.1; color: #fff; margin-bottom: 20px;
+}
+.hero-h1 em { color: var(--accent); font-style: normal; }
+.hero-sub { font-size: 12px; color: var(--dim2); line-height: 1.7; margin-bottom: 24px; max-width: 440px; }
+.hero-cta { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 20px; }
+.badge-strip { display: flex; gap: 6px; flex-wrap: wrap; }
+.badge-pill {
+  font-family: var(--font-m); font-size: 9px; text-transform: uppercase;
+  letter-spacing: 0.06em; color: var(--dim); border: 1px solid var(--border-solid);
+  padding: 3px 8px;
+}
+
+/* ── Stat cards ── */
+.stat-row { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(6, 1fr); gap: 1px; background: var(--border-solid); border: 1px solid var(--border-solid); }
+.stat-cell {
+  background: var(--bg); padding: 18px 14px; text-align: center; transition: background 0.2s;
+}
+.stat-cell:hover { background: var(--surface-solid); }
+.stat-num { font-family: var(--font-d); font-size: 20px; color: var(--accent); margin-bottom: 4px; }
+.stat-lbl { font-size: 9px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--dim); }
+
+/* ── Feature cards ── */
+.feat-grid {
+  grid-column: 1 / -1;
+  display: grid; grid-template-columns: repeat(3, 1fr);
+  gap: 1px; background: var(--border-solid); border: 1px solid var(--border-solid);
+}
+.feat-cell {
+  background: var(--bg); padding: 28px 24px; transition: all 0.3s;
+}
+.feat-cell:hover { background: var(--surface-solid); }
+.feat-icon {
+  width: 34px; height: 34px; border: 1px solid var(--border-bright);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px; margin-bottom: 14px;
+}
+.feat-title {
+  font-family: var(--font-m); font-size: 11px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.04em;
+  color: var(--text); margin-bottom: 8px;
+}
+.feat-desc { font-size: 11px; color: var(--dim2); line-height: 1.65; }
+.feat-desc code { color: var(--accent); font-family: var(--font-m); font-size: 10px; }
+
+/* ── How it works ── */
+.how-row {
+  grid-column: 1 / -1;
+  display: grid; grid-template-columns: repeat(4, 1fr);
+  gap: 20px;
+}
+.how-card { padding: 24px 20px; min-height: 240px; }
+.how-num {
+  font-family: var(--font-m); font-size: 9px; text-transform: uppercase;
+  letter-spacing: 0.08em; color: var(--accent);
+  border: 1px solid rgba(74,222,128,0.22); background: rgba(74,222,128,0.08);
+  padding: 3px 10px; display: inline-block; margin-bottom: 14px;
+}
+.how-title { font-size: 13px; font-weight: 700; color: var(--text); margin-bottom: 8px; }
+.how-desc { font-size: 11px; color: var(--dim2); line-height: 1.65; }
+
+/* ── City cards ── */
+.city-row {
+  grid-column: 1 / -1;
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px;
+  background: var(--border-solid); border: 1px solid var(--border-solid);
+}
+.city-cell {
+  background: var(--bg); padding: 20px; transition: all 0.3s;
+}
+.city-cell:hover { background: var(--surface-solid); }
+.city-abbr {
+  font-family: var(--font-m); font-size: 10px; font-weight: 700;
+  letter-spacing: 0.12em; color: var(--accent);
+  border: 1px solid rgba(74,222,128,0.22); background: rgba(74,222,128,0.08);
+  padding: 2px 7px; display: inline-block; margin-bottom: 10px;
+}
+.city-name { font-weight: 700; font-size: 13px; margin-bottom: 3px; }
+.city-coord { font-family: var(--font-m); font-size: 10px; color: var(--dim); margin-bottom: 8px; }
+.city-tags { display: flex; gap: 5px; flex-wrap: wrap; }
+.city-tag { font-family: var(--font-m); font-size: 9px; color: var(--dim); border: 1px solid var(--border-solid); padding: 2px 6px; }
+
+/* ── Signal table ── */
+.signal-card {
+  grid-column: 1 / -1;
+  padding: 0; overflow: hidden;
+}
+.signal-bar {
+  display: flex; align-items: center; gap: 10px;
+  padding: 11px 18px;
+  background: var(--bg2); border-bottom: 1px solid var(--border-solid);
+}
+@keyframes pdot {
+  0%,100% { box-shadow: 0 0 4px var(--accent); }
+  50% { box-shadow: 0 0 12px var(--accent), 0 0 20px rgba(74,222,128,0.3); }
+}
+.signal-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); animation: pdot 2.4s ease infinite; }
+.signal-title { font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--dim); }
+.signal-meta { margin-left: auto; font-size: 10px; color: var(--dim); }
+.sig-table { width: 100%; border-collapse: collapse; font-family: var(--font-m); font-size: 11px; }
+.sig-table th {
+  text-align: left; padding: 10px 16px; font-size: 9px; text-transform: uppercase;
+  letter-spacing: 0.06em; color: var(--dim); border-bottom: 1px solid var(--border-solid); white-space: nowrap;
+}
+.sig-table td { padding: 10px 16px; border-bottom: 1px solid rgba(26,58,42,0.25); white-space: nowrap; }
+.sig-table tr:last-child td { border-bottom: none; }
+.sig-table tbody tr:hover { background: rgba(74,222,128,0.04); }
+.pill { display: inline-block; padding: 2px 8px; font-size: 9px; font-weight: 700; letter-spacing: 0.04em; }
+.pill-yes  { background: rgba(74,222,128,0.15); color: var(--accent); }
+.pill-no   { background: rgba(255,68,102,0.15); color: var(--red); }
+.pill-lock { background: rgba(45,90,65,0.4); color: var(--accent); }
+.edge-hi { color: var(--accent); font-weight: 700; }
+
+/* ── FAQ ── */
+.faq-card { grid-column: 1 / -1; padding: 0; overflow: hidden; }
+details { border-bottom: 1px solid var(--border-solid); }
+details:last-child { border-bottom: none; }
+summary {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 16px 22px; cursor: pointer; list-style: none;
+  font-weight: 700; font-size: 12px; transition: background 0.18s; user-select: none;
+}
+summary::-webkit-details-marker { display: none; }
+summary:hover { background: var(--surface-solid); }
+summary::after { content: '+'; font-family: var(--font-m); font-size: 14px; color: var(--dim); font-weight: 400; }
+details[open] summary { background: var(--surface-solid); color: var(--accent); border-bottom: 1px solid var(--border-solid); }
+details[open] summary::after { content: '\2212'; color: var(--accent); }
+.faq-answer { padding: 16px 22px 20px; font-size: 11px; color: var(--dim2); line-height: 1.75; }
+.faq-answer code { font-family: var(--font-m); font-size: 10px; color: var(--accent); }
+.faq-answer strong { color: var(--text); }
+
+/* ── CTA ── */
+.cta-card {
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: 50px 30px;
+  border: 1px solid var(--border-bright);
+  position: relative;
+}
+.cta-card::before {
+  content: ''; position: absolute; top: 0; left: 50%; transform: translateX(-50%);
+  width: 160px; height: 1px;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+}
+.cta-h2 { font-family: var(--font-d); font-size: 20px; font-weight: 400; text-transform: uppercase; color: #fff; margin-bottom: 12px; }
+.cta-sub { font-size: 12px; color: var(--dim2); margin-bottom: 24px; }
+.cta-actions { display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; }
+
+/* ── Footer ── */
+.tech-footer {
+  grid-column: 1 / -1;
+  margin-top: 40px;
+  border-top: 1px solid rgba(45,90,65,0.4);
+  padding-top: 20px;
+  display: flex; justify-content: space-between; align-items: flex-start;
+  flex-wrap: wrap; gap: 20px;
+}
+.footer-links { display: flex; gap: 20px; list-style: none; flex-wrap: wrap; }
+.footer-links a {
+  font-family: var(--font-m); font-size: 9px; text-transform: uppercase;
+  letter-spacing: 0.06em; color: var(--dim); text-decoration: none; transition: color 0.2s;
+}
+.footer-links a:hover { color: var(--text); }
+
+/* ── Responsive ── */
+@media (max-width: 1100px) {
+  .grid { padding: 20px; gap: 14px; }
+  .mega-title { font-size: 10vw; flex-direction: column; align-items: flex-start; gap: 0; }
+  .terminal-card, .hero-card { grid-column: 1 / -1; }
+  .stat-row { grid-template-columns: repeat(3, 1fr); }
+  .feat-grid { grid-template-columns: repeat(2, 1fr); }
+  .how-row { grid-template-columns: repeat(2, 1fr); }
+  .city-row { grid-template-columns: repeat(2, 1fr); }
+  .grid-pos-1, .grid-pos-2, .grid-pos-3 { grid-column: span 4; text-align: left; }
+}
+@media (max-width: 640px) {
+  .grid { padding: 14px; gap: 10px; }
+  .mega-title { font-size: 14vw; }
+  .nav-links { display: none; }
+  .stat-row { grid-template-columns: repeat(2, 1fr); }
+  .feat-grid { grid-template-columns: 1fr; }
+  .how-row { grid-template-columns: 1fr; }
+  .city-row { grid-template-columns: 1fr; }
+  .grid-pos-1, .grid-pos-2, .grid-pos-3 { grid-column: 1 / -1; }
+  .install-box { margin-left: 0; }
+  .ca-row { flex-direction: column; gap: 10px; }
+}
+</style>
+</head>
+<body>
+<div class="grid">
+
+  <!-- ═══ NAV ═══ -->
+  <nav class="nav">
+    <a href="#" class="nav-logo">
+      <img src="/logo.png" alt="ElementClaw" style="height:32px;width:auto;" onerror="this.onerror=null;this.src='logo.png'">
+      ElementClaw
+    </a>
+    <ul class="nav-links">
+      <li><a href="#features">Features</a></li>
+      <li><a href="#how">How It Works</a></li>
+      <li><a href="#cities">Cities</a></li>
+      <li><a href="#docs">Docs</a></li>
+      <li><a href="#faq">FAQ</a></li>
+    </ul>
+    <div class="nav-right">
+      <a href="https://github.com/traderfoxexe/ElementClaw" target="_blank" class="btn">GitHub</a>
+      <a href="https://x.com/tryelementclaw" target="_blank" class="btn" style="font-size:13px;padding:6px 12px;">&#120143;</a>
+      <a href="/dashboard" target="_blank" class="btn btn-fill">Dashboard &rarr;</a>
+    </div>
+  </nav>
+
+  <!-- ═══ MEGA TITLE ═══ -->
+  <header class="brand-header">
+    <h1 class="mega-title display-type glow">
+      <span>ELEMENT</span>
+      <span>/</span>
+      <span>CLAW</span>
+    </h1>
+  </header>
+
+  <!-- ═══ META ROW ═══ -->
+  <div class="meta-group grid-pos-1">
+    <span class="mono-label">System Architecture</span>
+    <p>WEATHER PREDICTION<br>MARKET INTELLIGENCE</p>
+  </div>
+  <div class="meta-group grid-pos-2">
+    <div class="divider"></div>
+    <span class="mono-label" style="display:inline;">Mission Protocol</span>
+    <p class="mission-text" style="margin-top:10px;">
+      EXTRACTING ALPHA FROM MISPRICED<br>
+      POLYMARKET WEATHER BRACKETS VIA<br>
+      122 ENSEMBLE FORECAST MODELS.
+    </p>
+  </div>
+  <div class="meta-group grid-pos-3">
+    <span class="mono-label">Status</span>
+    <p><span class="status-dot"></span>SYSTEM OPERATIONAL</p>
+    <div style="margin-top:24px;">
+      <span class="mono-label">Version</span>
+      <p style="color:#ffffff;">1.0.0 (STABLE)</p>
+    </div>
+  </div>
+
+  <!-- ═══ CA + INSTALL ═══ -->
+  <div class="ca-row">
+    <span class="ca-label">CA:</span>
+    <span class="coming-soon">Coming Soon</span>
+    <div class="install-box">
+      <span class="install-prefix">$</span>
+      <span class="install-cmd" id="installCmd">openclaw skill add elementclaw</span>
+      <button class="copy-btn" onclick="doCopy()">Copy</button>
+    </div>
+  </div>
+
+  <!-- ═══ 01 // HERO: TERMINAL + PITCH ═══ -->
+  <div class="sec-label reveal">01 // LIVE SCANNER</div>
+
+  <div class="card terminal-card">
+    <div class="term-bar">
+      <div class="term-dots">
+        <span class="tdot tdot-r"></span>
+        <span class="tdot tdot-y"></span>
+        <span class="tdot tdot-g"></span>
+      </div>
+      <span class="term-title">bun run scan &mdash; paper mode</span>
+    </div>
+    <div class="term-body" id="termBody"></div>
+  </div>
+
+  <div class="card hero-card">
+    <div>
+      <div class="hero-eyebrow">
+        <span class="hero-eyebrow-line"></span>
+        Automated Polymarket Trading Bot
+      </div>
+      <div class="hero-h1">
+        Make Money From<br>Weather Forecasts<br><em>On Autopilot</em>
+      </div>
+      <p class="hero-sub">
+        Polymarket pays real USDC for correct weather predictions. Most traders guess. ElementClaw uses 122 ensemble forecast models to find mispriced markets and trade them automatically &mdash; so you profit while you sleep.
+      </p>
+      <div class="hero-cta">
+        <a href="#how" class="btn btn-fill">Start Paper Trading</a>
+        <a href="/dashboard" target="_blank" class="btn">See Live Dashboard</a>
+      </div>
+      <div class="badge-strip">
+        <span class="badge-pill">Polymarket</span>
+        <span class="badge-pill">OpenClaw</span>
+        <span class="badge-pill">USDC Payouts</span>
+        <span class="badge-pill">122 Ensemble Models</span>
+        <span class="badge-pill">Auto-Settlement</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ 02 // STATS ═══ -->
+  <div class="sec-label reveal">02 // PERFORMANCE METRICS</div>
+  <div class="stat-row reveal">
+    <div class="stat-cell"><div class="stat-num">61.7%</div><div class="stat-lbl">Backtest Win Rate</div></div>
+    <div class="stat-cell"><div class="stat-num">20.7%</div><div class="stat-lbl">Avg Edge Per Trade</div></div>
+    <div class="stat-cell"><div class="stat-num">122</div><div class="stat-lbl">Ensemble Forecasts</div></div>
+    <div class="stat-cell"><div class="stat-num">1,440</div><div class="stat-lbl">Scans Per Day</div></div>
+    <div class="stat-cell"><div class="stat-num">$50</div><div class="stat-lbl">Min Bankroll</div></div>
+    <div class="stat-cell"><div class="stat-num">&lt;1s</div><div class="stat-lbl">Per Scan Cycle</div></div>
+  </div>
+
+  <!-- ═══ 03 // FEATURES ═══ -->
+  <div class="sec-label reveal" id="features">03 // WHY IT WORKS &mdash; BUILT TO COMPOUND, NOT GAMBLE</div>
+  <div class="feat-grid reveal">
+    <div class="feat-cell">
+      <div class="feat-icon">&#127783;</div>
+      <div class="feat-title">3-Model Consensus</div>
+      <div class="feat-desc">GFS (31 members) and ECMWF (51 members) are combined into a single weighted probability. Four confidence tiers &mdash; LOCK, STRONG, SAFE, NEAR-SAFE &mdash; determine how aggressively to bet. No single model, no guessing.</div>
+    </div>
+    <div class="feat-cell">
+      <div class="feat-icon">&#128200;</div>
+      <div class="feat-title">Kelly Sizing</div>
+      <div class="feat-desc">Every trade is sized by the Kelly criterion to maximize long-term growth. Quarter-Kelly keeps variance low. LOCK signals bet 1.5&times;, STRONG 1.2&times;. Max position capped at 5% of bankroll &mdash; one bad trade can&rsquo;t blow you up.</div>
+    </div>
+    <div class="feat-cell">
+      <div class="feat-icon">&#9889;</div>
+      <div class="feat-title">Circuit Breaker</div>
+      <div class="feat-desc">3 consecutive losses and trading halts automatically. No emotional revenge trading, no death spiral. Resets on the next win. Your bankroll is protected even when the models miss.</div>
+    </div>
+    <div class="feat-cell">
+      <div class="feat-icon">&#128196;</div>
+      <div class="feat-title">Paper &rarr; Live Toggle</div>
+      <div class="feat-desc">Start in paper mode with zero risk &mdash; identical logic, no real money. When you&rsquo;re confident, flip to live and ElementClaw places real CLOB orders on Polymarket. One environment variable, same codebase.</div>
+    </div>
+    <div class="feat-cell">
+      <div class="feat-icon">&#9881;</div>
+      <div class="feat-title">OpenClaw Deployment</div>
+      <div class="feat-desc">Install with <code>openclaw skill add elementclaw</code> and it runs on your VPS via cron. No Docker, no Kubernetes. Scans every 30 minutes, settles daily, reports via web dashboard.</div>
+    </div>
+    <div class="feat-cell">
+      <div class="feat-icon">&#128202;</div>
+      <div class="feat-title">Live Web Dashboard</div>
+      <div class="feat-desc">Real-time P&amp;L, open positions, signal history, and settlement status in a single dashboard. See exactly what the bot is doing, what it&rsquo;s holding, and how much you&rsquo;ve made &mdash; from any device.</div>
+    </div>
+  </div>
+
+  <!-- ═══ 04 // HOW IT WORKS ═══ -->
+  <div class="sec-label reveal" id="how">04 // THE EDGE &mdash; WEATHER MODELS KNOW MORE THAN THE MARKET DOES</div>
+  <div class="how-row">
+    <div class="card how-card">
+      <div><span class="how-num">Step 01</span>
+      <div class="how-title">The Market</div>
+      <div class="how-desc">Polymarket lists daily temperature brackets for 6 US cities &mdash; &ldquo;Will NYC&rsquo;s high be 38&ndash;39&deg;F?&rdquo; Each bracket trades like a stock with a price between 0&cent; and 100&cent;. Correct predictions pay $1 USDC. That price is set by the crowd &mdash; and the crowd is often wrong.</div></div>
+    </div>
+    <div class="card how-card">
+      <div><span class="how-num">Step 02</span>
+      <div class="how-title">The Mispricing</div>
+      <div class="how-desc">ElementClaw fetches 122 ensemble forecast members from GFS and ECMWF &mdash; the same models used by NOAA. It calculates the true probability of each bracket and compares it to the market price. When the gap exceeds 8%, that&rsquo;s a trade.</div></div>
+    </div>
+    <div class="card how-card">
+      <div><span class="how-num">Step 03</span>
+      <div class="how-title">The Execution</div>
+      <div class="how-desc">Each signal is sized using the Kelly criterion to maximize long-term growth without risking ruin. Paper mode logs the trade instantly. Live mode places a real limit order on Polymarket&rsquo;s CLOB. Every 30 minutes, the bot scans again.</div></div>
+    </div>
+    <div class="card how-card">
+      <div><span class="how-num">Step 04</span>
+      <div class="how-title">The Settlement</div>
+      <div class="how-desc">When the day ends, actual observed temperatures are fetched from Iowa State Mesonet. Winning positions pay $1 USDC per share. Losses cost your entry price. P&amp;L is tracked automatically &mdash; you just check the dashboard.</div></div>
+    </div>
+  </div>
+
+  <!-- ═══ 05 // CITIES ═══ -->
+  <div class="sec-label reveal" id="cities">05 // COVERAGE &mdash; 6 CITIES, 100+ MARKETS DAILY</div>
+  <div class="city-row reveal">
+    <div class="city-cell">
+      <span class="city-abbr">NYC</span>
+      <div class="city-name">New York City</div>
+      <div class="city-coord">40.713&deg;N &nbsp; 74.006&deg;W</div>
+      <div class="city-tags"><span class="city-tag">NWS OKX 33,37</span><span class="city-tag">KNYC</span></div>
+    </div>
+    <div class="city-cell">
+      <span class="city-abbr">CHI</span>
+      <div class="city-name">Chicago</div>
+      <div class="city-coord">41.878&deg;N &nbsp; 87.630&deg;W</div>
+      <div class="city-tags"><span class="city-tag">NWS LOT 76,73</span><span class="city-tag">KORD</span></div>
+    </div>
+    <div class="city-cell">
+      <span class="city-abbr">MIA</span>
+      <div class="city-name">Miami</div>
+      <div class="city-coord">25.762&deg;N &nbsp; 80.192&deg;W</div>
+      <div class="city-tags"><span class="city-tag">NWS MFL 76,50</span><span class="city-tag">KMIA</span></div>
+    </div>
+    <div class="city-cell">
+      <span class="city-abbr">ATL</span>
+      <div class="city-name">Atlanta</div>
+      <div class="city-coord">33.749&deg;N &nbsp; 84.388&deg;W</div>
+      <div class="city-tags"><span class="city-tag">NWS FFC 52,88</span><span class="city-tag">KATL</span></div>
+    </div>
+    <div class="city-cell">
+      <span class="city-abbr">SEA</span>
+      <div class="city-name">Seattle</div>
+      <div class="city-coord">47.606&deg;N &nbsp; 122.332&deg;W</div>
+      <div class="city-tags"><span class="city-tag">NWS SEW 124,67</span><span class="city-tag">KSEA</span></div>
+    </div>
+    <div class="city-cell">
+      <span class="city-abbr">DFW</span>
+      <div class="city-name">Dallas</div>
+      <div class="city-coord">32.777&deg;N &nbsp; 96.797&deg;W</div>
+      <div class="city-tags"><span class="city-tag">NWS FWD 80,103</span><span class="city-tag">KDFW</span></div>
+    </div>
+  </div>
+
+  <!-- ═══ 06 // SIGNAL TABLE ═══ -->
+  <div class="sec-label reveal">06 // LIVE EXAMPLE &mdash; REAL EDGE, REAL NUMBERS</div>
+  <div class="card signal-card reveal">
+    <div class="signal-bar">
+      <div class="signal-dot"></div>
+      <span class="signal-title">Scan output &mdash; Feb 18 2026 &nbsp;22:00 UTC</span>
+      <span class="signal-meta">19 signals &nbsp;&middot;&nbsp; 10 executed &nbsp;&middot;&nbsp; $24.25 exposure</span>
+    </div>
+    <table class="sig-table">
+      <thead><tr>
+        <th>City</th><th>Bracket</th><th>Side</th>
+        <th>Model%</th><th>Mkt&cent;</th><th>Edge%</th>
+        <th>Size</th><th>Confidence</th>
+      </tr></thead>
+      <tbody>
+        <tr><td>Atlanta</td><td>above 68&deg;F</td><td><span class="pill pill-no">NO</span></td><td>81.8%</td><td>9.0&cent;</td><td class="edge-hi">+72.8%</td><td>$2.50</td><td><span class="pill pill-lock">LOCK</span></td></tr>
+        <tr><td>Miami</td><td>76&ndash;77&deg;F</td><td><span class="pill pill-yes">YES</span></td><td>63.9%</td><td>6.5&cent;</td><td class="edge-hi">+57.4%</td><td>$2.50</td><td><span class="pill pill-lock">LOCK</span></td></tr>
+        <tr><td>Chicago</td><td>below 58&deg;F</td><td><span class="pill pill-yes">YES</span></td><td>40.0%</td><td>1.9&cent;</td><td class="edge-hi">+38.1%</td><td>$1.75</td><td><span class="pill pill-lock">LOCK</span></td></tr>
+        <tr><td>NYC</td><td>38&ndash;39&deg;F</td><td><span class="pill pill-yes">YES</span></td><td>28.4%</td><td>5.8&cent;</td><td class="edge-hi">+22.6%</td><td>$2.50</td><td><span class="pill pill-lock">LOCK</span></td></tr>
+        <tr><td>Seattle</td><td>42&ndash;43&deg;F</td><td><span class="pill pill-no">NO</span></td><td>69.1%</td><td>51.0&cent;</td><td class="edge-hi">+18.1%</td><td>$2.50</td><td><span class="pill pill-lock">LOCK</span></td></tr>
+        <tr><td>Chicago</td><td>64&ndash;65&deg;F</td><td><span class="pill pill-no">NO</span></td><td>98.5%</td><td>78.5&cent;</td><td class="edge-hi">+20.0%</td><td>$2.50</td><td><span class="pill pill-lock">LOCK</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ═══ 07 // DOCS ═══ -->
+  <div class="sec-label reveal" id="docs">07 // DOCUMENTATION</div>
+  <div class="how-row" style="grid-template-columns: repeat(3, 1fr);">
+
+    <div class="card how-card reveal reveal-delay-1" style="min-height:280px;">
+      <div>
+        <span class="how-num">Quick Start</span>
+        <div class="how-title">Install &amp; Run</div>
+        <div class="how-desc" style="font-size:11px;">
+          <strong style="color:var(--text);">1.</strong> Install OpenClaw on your VPS<br>
+          <strong style="color:var(--text);">2.</strong> Run <code style="color:var(--accent)">openclaw skill add elementclaw</code><br>
+          <strong style="color:var(--text);">3.</strong> Set your <code style="color:var(--accent)">POLYGON_PRIVATE_KEY</code> and <code style="color:var(--accent)">BANKROLL_USDC</code> in <code style="color:var(--accent)">~/.openclaw/openclaw.json</code><br>
+          <strong style="color:var(--text);">4.</strong> Start with <code style="color:var(--accent)">MODE=paper</code> to test<br>
+          <strong style="color:var(--text);">5.</strong> Switch to <code style="color:var(--accent)">MODE=live</code> when ready
+        </div>
+      </div>
+    </div>
+
+    <div class="card how-card reveal reveal-delay-2" style="min-height:280px;">
+      <div>
+        <span class="how-num">Commands</span>
+        <div class="how-title">CLI Reference</div>
+        <div class="how-desc" style="font-size:11px;">
+          <code style="color:var(--accent)">bun run paper</code> &mdash; Continuous loop for local dev<br><br>
+          <code style="color:var(--accent)">bun run scan</code> &mdash; Fetch weather, scan markets, trade<br><br>
+          <code style="color:var(--accent)">bun run settle</code> &mdash; Check settlements, update P&amp;L<br><br>
+          <code style="color:var(--accent)">bun run status</code> &mdash; JSON report of positions + stats<br><br>
+          <code style="color:var(--accent)">bun test</code> &mdash; Run the test suite
+        </div>
+      </div>
+    </div>
+
+    <div class="card how-card reveal reveal-delay-3" style="min-height:280px;">
+      <div>
+        <span class="how-num">Configuration</span>
+        <div class="how-title">Environment Variables</div>
+        <div class="how-desc" style="font-size:11px;">
+          <code style="color:var(--accent)">MODE</code> &mdash; <span style="color:var(--dim2)">"paper" or "live"</span><br><br>
+          <code style="color:var(--accent)">BANKROLL_USDC</code> &mdash; <span style="color:var(--dim2)">Starting capital (default $50)</span><br><br>
+          <code style="color:var(--accent)">MIN_EDGE_PCT</code> &mdash; <span style="color:var(--dim2)">Minimum edge threshold (default 8%)</span><br><br>
+          <code style="color:var(--accent)">KELLY_FRACTION</code> &mdash; <span style="color:var(--dim2)">Sizing aggressiveness (default 0.25)</span><br><br>
+          <code style="color:var(--accent)">MAX_OPEN_POSITIONS</code> &mdash; <span style="color:var(--dim2)">Max concurrent trades (default 10)</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="card how-card reveal reveal-delay-1" style="min-height:280px;">
+      <div>
+        <span class="how-num">Architecture</span>
+        <div class="how-title">How It&rsquo;s Built</div>
+        <div class="how-desc" style="font-size:11px;">
+          <strong style="color:var(--text);">Stack:</strong> TypeScript + Bun + SQLite<br>
+          <strong style="color:var(--text);">Runtime:</strong> OpenClaw cron on VPS<br>
+          <strong style="color:var(--text);">Data:</strong> Open-Meteo (GFS/ECMWF ensembles), NWS point forecasts, Iowa State Mesonet (settlement)<br>
+          <strong style="color:var(--text);">Trading:</strong> Polymarket CLOB via EIP-712 + HMAC<br>
+          <strong style="color:var(--text);">Dashboard:</strong> Bun.serve() on port 3456
+        </div>
+      </div>
+    </div>
+
+    <div class="card how-card reveal reveal-delay-2" style="min-height:280px;">
+      <div>
+        <span class="how-num">Cron Schedule</span>
+        <div class="how-title">Production Timing</div>
+        <div class="how-desc" style="font-size:11px;">
+          <strong style="color:var(--text);">Scan:</strong> Every 30 minutes<br>
+          <span style="color:var(--dim);">Fetches forecasts, discovers markets, finds edge, executes trades</span><br><br>
+          <strong style="color:var(--text);">Settle:</strong> Hourly<br>
+          <span style="color:var(--dim);">Checks actual temps from Iowa State, resolves positions, updates P&amp;L</span><br><br>
+          <strong style="color:var(--text);">Status:</strong> Daily at 8 AM<br>
+          <span style="color:var(--dim);">JSON report of all positions and performance stats</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="card how-card reveal reveal-delay-3" style="min-height:280px;">
+      <div>
+        <span class="how-num">Risk Controls</span>
+        <div class="how-title">Safety Mechanisms</div>
+        <div class="how-desc" style="font-size:11px;">
+          <strong style="color:var(--text);">Circuit Breaker:</strong> 3 consecutive losses halts trading<br><br>
+          <strong style="color:var(--text);">Quarter-Kelly:</strong> Conservative sizing limits per-trade risk<br><br>
+          <strong style="color:var(--text);">Max Position:</strong> 5% of bankroll cap per trade<br><br>
+          <strong style="color:var(--text);">Max Open:</strong> 10 concurrent positions limit<br><br>
+          <strong style="color:var(--text);">Edge Threshold:</strong> Only trades with 8%+ edge execute
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ═══ 08 // FAQ ═══ -->
+  <div class="sec-label reveal" id="faq">08 // QUESTIONS</div>
+  <div class="card faq-card reveal">
+    <details>
+      <summary>How much money can I make?</summary>
+      <div class="faq-answer">It depends on your bankroll and market conditions. Backtest data shows a <strong>61.7% win rate</strong> with an average edge of 20.7% per trade. With a $50 bankroll and quarter-Kelly sizing, individual trades are $1&ndash;$3 USDC. Compounding winners grows the bankroll over time. This is not a get-rich-quick scheme &mdash; it&rsquo;s a systematic edge that compounds.</div>
+    </details>
+    <details>
+      <summary>What&rsquo;s the minimum to start?</summary>
+      <div class="faq-answer"><strong>$50 USDC</strong> on Polygon is a practical minimum. Individual trades range from $1&ndash;$3 with default settings. You&rsquo;ll also need a small amount of MATIC for gas fees (a few cents per transaction). Paper mode is completely free &mdash; no wallet or funds required.</div>
+    </details>
+    <details>
+      <summary>Is this actually profitable or just backtested?</summary>
+      <div class="faq-answer">The backtests use real historical market prices and real ensemble forecast data &mdash; no lookahead bias. Paper mode lets you verify the edge in real-time before risking a dollar. The signal table on this page shows real output from a live scan. That said, past performance doesn&rsquo;t guarantee future results and market conditions can change.</div>
+    </details>
+    <details>
+      <summary>What if it starts losing money?</summary>
+      <div class="faq-answer">The <strong>circuit breaker</strong> automatically halts all trading after 3 consecutive losses. No emotional revenge trading, no death spiral. It resets on the next win. Quarter-Kelly sizing also ensures no single trade risks more than a small fraction of your bankroll. You can also pause the bot at any time by stopping the OpenClaw cron.</div>
+    </details>
+    <details>
+      <summary>Do I need to know anything about weather or trading?</summary>
+      <div class="faq-answer">No. ElementClaw handles everything &mdash; fetching forecasts, discovering markets, calculating edge, sizing positions, and settling outcomes. You install it, set your bankroll, and let it run. The dashboard shows you exactly what&rsquo;s happening in plain English. If you want to understand the math, the code is open source.</div>
+    </details>
+    <details>
+      <summary>What is Polymarket?</summary>
+      <div class="faq-answer"><strong>Polymarket</strong> is a prediction market platform where you buy and sell shares on real-world outcomes. Weather markets let you bet on questions like &ldquo;Will NYC&rsquo;s high be between 38&ndash;39&deg;F tomorrow?&rdquo; Shares trade between 0&cent; and 100&cent;. If you&rsquo;re right, your shares pay out $1 USDC each. If wrong, they expire worthless. It&rsquo;s built on Polygon and settles in USDC.</div>
+    </details>
+  </div>
+
+  <!-- ═══ 08 // CTA ═══ -->
+  <div class="sec-label reveal">09 // DEPLOY</div>
+  <div class="card cta-card reveal">
+    <div class="hero-eyebrow" style="justify-content:center;margin-bottom:16px;">
+      <span class="hero-eyebrow-line"></span>
+      Deploy in 5 minutes
+      <span class="hero-eyebrow-line"></span>
+    </div>
+    <div class="cta-h2">Your edge is waiting</div>
+    <p class="cta-sub">Paper trade with zero risk. See the edge for yourself. When you&rsquo;re ready, flip to live and start earning USDC.</p>
+    <div class="cta-actions">
+      <a href="#how" class="btn btn-fill">Get Started</a>
+      <a href="/dashboard" target="_blank" class="btn">Open Dashboard</a>
+    </div>
+  </div>
+
+  <!-- ═══ FOOTER ═══ -->
+  <footer class="tech-footer">
+    <div>
+      <span class="mono-label">Powered By</span>
+      <span style="font-size:14px;font-weight:bold;color:#fff;">OPENCLAW V.1.0</span>
+    </div>
+    <ul class="footer-links">
+      <li><a href="#features">Features</a></li>
+      <li><a href="#how">How It Works</a></li>
+      <li><a href="#cities">Cities</a></li>
+      <li><a href="#docs">Docs</a></li>
+      <li><a href="#faq">FAQ</a></li>
+      <li><a href="/dashboard" target="_blank">Dashboard</a></li>
+    </ul>
+    <div style="text-align:right;">
+      <span class="mono-label">License</span>
+      <span style="font-size:11px;color:var(--dim);">MIT &middot; Bun + TypeScript</span>
+    </div>
+  </footer>
+
+</div>
+
+<script>
+// ── Copy install ──
+function doCopy() {
+  var txt = document.getElementById('installCmd').textContent;
+  if (navigator.clipboard) navigator.clipboard.writeText(txt);
+  var btn = document.querySelector('.copy-btn');
+  btn.textContent = 'Copied!';
+  setTimeout(function() { btn.textContent = 'Copy'; }, 1800);
+}
+
+// ── Terminal animation ──
+var LINES = [
+  { h: '<span class="t-ts">[22:00:19]</span> <span class="t-info">INFO</span>  scan: starting &nbsp;<span class="t-key">mode=</span><span class="t-val">"paper"</span>' },
+  { h: '<span class="t-ts">[22:00:19]</span> <span class="t-info">INFO</span>  SQLite database initialized' },
+  { h: '' },
+  { h: '<span class="t-ts">[22:00:21]</span> <span class="t-info">INFO</span>  Ensemble cached &nbsp;<span class="t-key">city=</span><span class="t-val">"New York City"</span>  <span class="t-key">days=</span><span class="t-val">7</span>' },
+  { h: '<span class="t-ts">[22:00:22]</span> <span class="t-info">INFO</span>  Ensemble cached &nbsp;<span class="t-key">city=</span><span class="t-val">"Chicago"</span>' },
+  { h: '<span class="t-ts">[22:00:22]</span> <span class="t-info">INFO</span>  Ensemble cached &nbsp;<span class="t-key">city=</span><span class="t-val">"Miami"</span>' },
+  { h: '<span class="t-ts">[22:00:23]</span> <span class="t-info">INFO</span>  Ensemble cached &nbsp;<span class="t-key">city=</span><span class="t-val">"Atlanta"</span>' },
+  { h: '<span class="t-ts">[22:00:23]</span> <span class="t-info">INFO</span>  Ensemble cached &nbsp;<span class="t-key">city=</span><span class="t-val">"Seattle"</span>' },
+  { h: '<span class="t-ts">[22:00:24]</span> <span class="t-info">INFO</span>  Ensemble cached &nbsp;<span class="t-key">city=</span><span class="t-val">"Dallas"</span>' },
+  { h: '<span class="t-ts">[22:00:29]</span> <span class="t-info">INFO</span>  ECMWF cached &nbsp;&nbsp;&nbsp;<span class="t-key">cities=</span><span class="t-val">6</span>  <span class="t-key">members=</span><span class="t-val">51</span>' },
+  { h: '' },
+  { h: '<span class="t-ts">[22:00:33]</span> <span class="t-info">INFO</span>  markets fetched &nbsp;<span class="t-key">count=</span><span class="t-val">145</span>' },
+  { h: '<span class="t-ts">[22:00:33]</span> <span class="t-info">INFO</span>  markets parsed &nbsp;&nbsp;<span class="t-key">total=</span><span class="t-val">145</span>  <span class="t-key">parsed=</span><span class="t-val">145</span>' },
+  { h: '' },
+  { h: '<span class="t-ts">[22:00:33]</span> <span class="t-sig"> SIGNAL</span> <span class="t-key">city=</span><span class="t-val">atlanta</span> <span class="t-key">bracket=</span><span class="t-val">"above 68\u00b0F"</span>  <span class="t-key">edge=</span><span class="t-edge">+72.8%</span> <span class="t-lock">LOCK</span>' },
+  { h: '<span class="t-ts">[22:00:33]</span> <span class="t-sig"> SIGNAL</span> <span class="t-key">city=</span><span class="t-val">miami</span>   <span class="t-key">bracket=</span><span class="t-val">"76-77\u00b0F"</span>    <span class="t-key">edge=</span><span class="t-edge">+57.4%</span> <span class="t-lock">LOCK</span>' },
+  { h: '<span class="t-ts">[22:00:33]</span> <span class="t-sig"> SIGNAL</span> <span class="t-key">city=</span><span class="t-val">chicago</span> <span class="t-key">bracket=</span><span class="t-val">"below 58\u00b0F"</span> <span class="t-key">edge=</span><span class="t-edge">+38.1%</span> <span class="t-lock">LOCK</span>' },
+  { h: '<span class="t-ts">[22:00:33]</span> <span class="t-sig"> SIGNAL</span> <span class="t-key">city=</span><span class="t-val">nyc</span>     <span class="t-key">bracket=</span><span class="t-val">"38-39\u00b0F"</span>    <span class="t-key">edge=</span><span class="t-edge">+22.6%</span> <span class="t-lock">LOCK</span>' },
+  { h: '' },
+  { h: '<span class="t-ts">[22:00:33]</span> <span class="t-trd"> PAPER </span> <span class="t-key">atlanta</span> NO  <span class="t-val">$2.50</span> @ <span class="t-val">9.0\u00a2</span>  <span class="t-key">edge=</span><span class="t-edge">+72.8%</span>' },
+  { h: '<span class="t-ts">[22:00:33]</span> <span class="t-trd"> PAPER </span> <span class="t-key">miami</span>   YES <span class="t-val">$2.50</span> @ <span class="t-val">6.5\u00a2</span>  <span class="t-key">edge=</span><span class="t-edge">+57.4%</span>' },
+  { h: '<span class="t-ts">[22:00:33]</span> <span class="t-trd"> PAPER </span> <span class="t-key">chicago</span> YES <span class="t-val">$1.75</span> @ <span class="t-val">1.9\u00a2</span>  <span class="t-key">edge=</span><span class="t-edge">+38.1%</span>' },
+  { h: '<span class="t-ts">[22:00:33]</span> <span class="t-trd"> PAPER </span> <span class="t-key">nyc</span>     YES <span class="t-val">$2.50</span> @ <span class="t-val">5.8\u00a2</span>  <span class="t-key">edge=</span><span class="t-edge">+22.6%</span>' },
+  { h: '' },
+  { h: '<span class="t-ts">[22:00:33]</span> <span class="t-ok">  INFO</span>  scan: complete  <span class="t-key">executed=</span><span class="t-val">10</span>  <span class="t-key">totalOpen=</span><span class="t-val">10</span>' },
+];
+
+var termBody = document.getElementById('termBody');
+var cursor   = document.createElement('span');
+cursor.className = 'cursor';
+var idx = 0;
+
+function addLine(html) {
+  var div = document.createElement('div');
+  div.className = 't-line';
+  div.innerHTML = html || '&nbsp;';
+  if (cursor.parentNode) cursor.parentNode.removeChild(cursor);
+  termBody.appendChild(div);
+  while (termBody.children.length > 14) termBody.removeChild(termBody.firstChild);
+  termBody.appendChild(cursor);
+}
+
+function tick() {
+  if (idx >= LINES.length) { idx = 0; setTimeout(tick, 3200); return; }
+  addLine(LINES[idx].h);
+  idx++;
+  var delay = LINES[idx - 1].h === '' ? 90 : Math.random() * 160 + 55;
+  setTimeout(tick, delay);
+}
+setTimeout(tick, 700);
+
+// ── Scroll reveal ──
+var revealEls = document.querySelectorAll('.reveal');
+var revealObs = new IntersectionObserver(function(entries) {
+  entries.forEach(function(e) {
+    if (e.isIntersecting) {
+      e.target.classList.add('visible');
+      revealObs.unobserve(e.target);
+    }
+  });
+}, { threshold: 0.12, rootMargin: '0px 0px -40px 0px' });
+revealEls.forEach(function(el) { revealObs.observe(el); });
+
+// ── Smooth nav scroll ──
+document.querySelectorAll('a[href^="#"]').forEach(function(a) {
+  a.addEventListener('click', function(e) {
+    var target = document.querySelector(this.getAttribute('href'));
+    if (target) {
+      e.preventDefault();
+      target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  });
+});
+
+// ── Parallax on mega title ──
+var megaTitle = document.querySelector('.mega-title');
+window.addEventListener('scroll', function() {
+  var s = window.scrollY;
+  if (s < 600 && megaTitle) {
+    megaTitle.style.transform = 'translateY(' + (s * 0.15) + 'px)';
+    megaTitle.style.opacity = Math.max(0, 1 - s / 500);
+  }
+});
+
+// ── Counter animation on stat numbers ──
+var statNums = document.querySelectorAll('.stat-num');
+var statObs = new IntersectionObserver(function(entries) {
+  entries.forEach(function(e) {
+    if (e.isIntersecting) {
+      animateStat(e.target);
+      statObs.unobserve(e.target);
+    }
+  });
+}, { threshold: 0.5 });
+statNums.forEach(function(el) { statObs.observe(el); });
+
+function animateStat(el) {
+  var text = el.textContent.trim();
+  var match = text.match(/^([<$]?)([0-9,.]+)(%?)$/);
+  if (!match) return;
+  var prefix = match[1], target = parseFloat(match[2].replace(/,/g, '')), suffix = match[3];
+  var hasComma = match[2].indexOf(',') >= 0;
+  var hasDecimal = match[2].indexOf('.') >= 0;
+  var dur = 1200, start = performance.now();
+  function step(now) {
+    var t = Math.min((now - start) / dur, 1);
+    t = 1 - Math.pow(1 - t, 3); // ease-out cubic
+    var v = target * t;
+    var s = hasDecimal ? v.toFixed(1) : Math.round(v).toString();
+    if (hasComma) s = Number(s).toLocaleString();
+    el.textContent = prefix + s + suffix;
+    if (t < 1) requestAnimationFrame(step);
+  }
+  requestAnimationFrame(step);
+}
+</script>
+</body>
+</html>

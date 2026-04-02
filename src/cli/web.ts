@@ -97,62 +97,68 @@ const HTML = `<!DOCTYPE html>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>WeatherClaw Dashboard</title>
+<title>ElementClaw Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Michroma&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
 <style>
   :root {
-    --bg: #0a0e17; --surface: #111827; --border: #1e293b;
-    --text: #e2e8f0; --dim: #64748b; --green: #22c55e;
-    --red: #ef4444; --yellow: #eab308; --cyan: #06b6d4;
-    --purple: #a855f7;
+    --bg: #0d1a14; --surface: rgba(26,58,42,0.4); --surface-solid: #11241a;
+    --border: #1a3a2a; --border-bright: #2d5a41;
+    --text: #e0e7e3; --dim: #7a9c8a; --green: #4ade80;
+    --red: #ff4466; --yellow: #ffd60a; --cyan: #4ade80;
+    --purple: #2d5a41;
   }
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body {
-    font-family: 'SF Mono', 'Fira Code', monospace;
+    font-family: 'Space Mono', 'SF Mono', monospace;
     background: var(--bg); color: var(--text);
     padding: 24px; min-height: 100vh;
   }
-  h1 { color: var(--cyan); font-size: 28px; margin-bottom: 8px; }
-  .subtitle { color: var(--dim); font-size: 13px; margin-bottom: 24px; }
+  h1 { font-family: 'Michroma', sans-serif; color: var(--cyan); font-size: 24px; margin-bottom: 8px; text-transform: uppercase; letter-spacing: -0.5px; }
+  .subtitle { color: var(--dim); font-size: 12px; margin-bottom: 24px; text-transform: uppercase; letter-spacing: 0.05em; }
   .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px; }
   .card {
     background: var(--surface); border: 1px solid var(--border);
-    border-radius: 12px; padding: 20px;
+    padding: 20px; transition: border-color 0.3s;
   }
-  .card-label { color: var(--dim); font-size: 11px; text-transform: uppercase; letter-spacing: 1px; }
-  .card-value { font-size: 28px; font-weight: 700; margin-top: 4px; }
+  .card:hover { border-color: var(--green); }
+  .card-label { color: var(--dim); font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; }
+  .card-value { font-family: 'Michroma', sans-serif; font-size: 24px; font-weight: 400; margin-top: 4px; }
   .positive { color: var(--green); }
   .negative { color: var(--red); }
-  .chart-container { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px; margin-bottom: 24px; }
-  .chart-title { color: var(--dim); font-size: 12px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px; }
+  .chart-container { background: var(--surface); border: 1px solid var(--border); padding: 20px; margin-bottom: 24px; transition: border-color 0.3s; }
+  .chart-container:hover { border-color: var(--green); }
+  .chart-title { font-family: 'Michroma', sans-serif; color: var(--dim); font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 12px; }
   canvas { width: 100%; height: 200px; }
-  table { width: 100%; border-collapse: collapse; font-size: 13px; }
-  th { color: var(--dim); text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--border); font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; }
-  td { padding: 8px 12px; border-bottom: 1px solid var(--border); }
+  table { width: 100%; border-collapse: collapse; font-size: 11px; }
+  th { color: var(--dim); text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--border); font-size: 9px; text-transform: uppercase; letter-spacing: 0.06em; }
+  td { padding: 8px 12px; border-bottom: 1px solid rgba(26,58,42,0.3); }
+  tbody tr:hover { background: rgba(74,222,128,0.04); }
   .won { color: var(--green); }
   .lost { color: var(--red); }
   .open { color: var(--yellow); }
   .section { margin-bottom: 24px; }
-  .section-title { color: var(--cyan); font-size: 16px; font-weight: 600; margin-bottom: 12px; }
+  .section-title { font-family: 'Michroma', sans-serif; color: var(--cyan); font-size: 12px; font-weight: 400; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.05em; }
   .badge {
-    display: inline-block; padding: 2px 8px; border-radius: 4px;
-    font-size: 11px; font-weight: 600;
+    display: inline-block; padding: 2px 8px;
+    font-size: 9px; font-weight: 700; letter-spacing: 0.04em;
   }
-  .badge-won { background: rgba(34,197,94,0.15); color: var(--green); }
-  .badge-lost { background: rgba(239,68,68,0.15); color: var(--red); }
-  .badge-open { background: rgba(234,179,8,0.15); color: var(--yellow); }
+  .badge-won { background: rgba(74,222,128,0.15); color: var(--green); }
+  .badge-lost { background: rgba(255,68,102,0.15); color: var(--red); }
+  .badge-open { background: rgba(255,214,10,0.15); color: var(--yellow); }
   .heatmap { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; }
   .heat-cell {
     background: var(--surface); border: 1px solid var(--border);
-    border-radius: 8px; padding: 12px; text-align: center;
+    padding: 12px; text-align: center; transition: border-color 0.3s;
   }
-  .heat-city { font-size: 12px; font-weight: 600; margin-bottom: 4px; }
-  .heat-stat { font-size: 20px; font-weight: 700; }
-  .refresh { color: var(--dim); font-size: 11px; margin-top: 16px; }
+  .heat-cell:hover { border-color: var(--green); }
+  .heat-city { font-size: 10px; font-weight: 700; margin-bottom: 4px; letter-spacing: 0.08em; }
+  .heat-stat { font-family: 'Michroma', sans-serif; font-size: 18px; font-weight: 400; }
+  .refresh { color: var(--dim); font-size: 10px; margin-top: 16px; text-transform: uppercase; letter-spacing: 0.06em; }
 </style>
 </head>
 <body>
-<h1>WeatherClaw</h1>
-<p class="subtitle">Weather Prediction Market Bot — Polymarket</p>
+<h1>ElementClaw</h1>
+<p class="subtitle">Weather Prediction Market Bot &mdash; Polymarket</p>
 
 <div id="stats" class="grid"></div>
 
@@ -257,7 +263,7 @@ function drawChart(data) {
   const range = max - min || 1;
   const pad = 20;
 
-  ctx.strokeStyle = '#1e293b';
+  ctx.strokeStyle = '#1a3a2a';
   ctx.lineWidth = 0.5;
   const zeroY = pad + (max / range) * (h - 2 * pad);
   ctx.beginPath();
@@ -265,7 +271,7 @@ function drawChart(data) {
   ctx.lineTo(w, zeroY);
   ctx.stroke();
 
-  ctx.strokeStyle = pnls[pnls.length - 1] >= 0 ? '#22c55e' : '#ef4444';
+  ctx.strokeStyle = pnls[pnls.length - 1] >= 0 ? '#4ade80' : '#ff4466';
   ctx.lineWidth = 2;
   ctx.beginPath();
   data.forEach((d, i) => {
