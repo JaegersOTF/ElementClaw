@@ -277,7 +277,13 @@ body {
 
   <!-- INFO -->
   <div class="card info-card">
-    <strong>How to copy trade:</strong> These are live signals from ElementClaw's scanning engine. When you see a signal with high edge and <span class="pill pill-lock">LOCK</span> confidence, you can manually place the same trade on Polymarket. Find the matching weather market, buy the indicated side (YES or NO) at or below the listed market price. Higher edge and LOCK confidence signals have the strongest expected value.
+    <strong style="color:var(--accent);">HOW TO COPY TRADE:</strong><br><br>
+    <strong>1.</strong> Look for signals with <span class="pill pill-lock">LOCK</span> confidence and high edge (15%+) &mdash; these have the strongest expected value.<br>
+    <strong>2.</strong> Click the <strong>"Trade"</strong> button to go directly to the Polymarket weather market for that city and date.<br>
+    <strong>3.</strong> Buy the indicated side (<span class="pill pill-yes">YES</span> or <span class="pill pill-no">NO</span>) at or below the listed market price.<br>
+    <strong>4.</strong> Size your trade at 2-5% of your bankroll. Never bet more than you can afford to lose.<br>
+    <strong>5.</strong> The market settles automatically when the actual temperature is reported (usually next day).<br><br>
+    <span style="color:var(--dim);">Signals refresh every 30 seconds. New scans run every 30 minutes. Paper mode signals show what the bot <em>would</em> trade &mdash; the edge is real, only the execution is simulated.</span>
   </div>
 
   <!-- SIGNALS TABLE -->
@@ -365,6 +371,25 @@ function fmt(n) {
   return (n >= 0 ? '+$' : '-$') + Math.abs(n).toFixed(2);
 }
 
+var CITY_NAMES = {
+  nyc: 'new-york-city', chicago: 'chicago', miami: 'miami',
+  atlanta: 'atlanta', seattle: 'seattle', dallas: 'dallas'
+};
+var MONTHS = ['','january','february','march','april','may','june','july','august','september','october','november','december'];
+
+function buildPolymarketLink(s) {
+  if (!s.date || !s.city) return 'https://polymarket.com';
+  var parts = s.date.split('-');
+  if (parts.length !== 3) return 'https://polymarket.com';
+  var city = CITY_NAMES[s.city] || s.city;
+  var month = MONTHS[parseInt(parts[1], 10)] || parts[1];
+  var day = parseInt(parts[2], 10);
+  var year = parts[0];
+  var metric = (s.metric || 'high') === 'high' ? 'highest' : 'lowest';
+  var slug = metric + '-temperature-in-' + city + '-on-' + month + '-' + day + '-' + year;
+  return 'https://polymarket.com/event/' + slug;
+}
+
 async function loadSignals() {
   try {
     var res = await fetch('/api/data');
@@ -409,7 +434,7 @@ async function loadSignals() {
             '<td>' + mktPrice + '</td>' +
             '<td class="' + edgeClass + '">' + edgePct + '</td>' +
             '<td>' + confidencePill(s.confidence) + '</td>' +
-            '<td><a href="https://polymarket.com" target="_blank" class="btn btn-sm">Trade</a></td>' +
+            '<td><a href="' + buildPolymarketLink(s) + '" target="_blank" class="btn btn-sm">Trade \u2197</a></td>' +
             '</tr>';
         }).join('') +
         '</tbody></table>';
