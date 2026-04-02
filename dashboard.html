@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ElementClaw — Dashboard</title>
+<meta name="description" content="Live performance dashboard for ElementClaw weather trading bot. Track P&L, equity curve, and city-by-city stats.">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
+<link rel="icon" type="image/svg+xml" href="/logo.svg">
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="shortcut icon" href="/favicon.ico">
+<meta name="theme-color" content="#0d1a14">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Michroma&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap');
+
+:root {
+  --bg: #0d1a14;
+  --bg2: #07110c;
+  --surface: rgba(26,58,42,0.4);
+  --surface-solid: #11241a;
+  --border: rgba(45,90,65,0.2);
+  --border-solid: #1a3a2a;
+  --border-bright: #2d5a41;
+  --accent: #4ade80;
+  --text: #e0e7e3;
+  --dim: #7a9c8a;
+  --dim2: #9ab8a8;
+  --red: #ff4466;
+  --yellow: #ffd60a;
+  --font-d: 'Michroma', sans-serif;
+  --font-m: 'Space Mono', monospace;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-m);
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: 20px;
+  padding: 40px;
+  max-width: 1920px;
+  margin: 0 auto;
+}
+
+.card {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  padding: 24px;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  transition: all 0.3s ease;
+}
+.card:hover {
+  border-color: var(--accent);
+  background: rgba(26,58,42,0.8);
+}
+
+.mono-label {
+  font-family: var(--font-m);
+  text-transform: uppercase;
+  font-size: 10px;
+  letter-spacing: 0.05em;
+  display: block;
+  margin-bottom: 8px;
+  color: var(--dim);
+}
+
+.nav {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 20px;
+  border-bottom: 1px solid rgba(45,90,65,0.15);
+  margin-bottom: 10px;
+}
+.nav-logo {
+  font-family: var(--font-d);
+  font-size: 12px;
+  color: var(--accent);
+  text-decoration: none;
+  text-transform: uppercase;
+  letter-spacing: -0.5px;
+  display: flex; align-items: center; gap: 8px;
+}
+.nav-links { display: flex; gap: 28px; list-style: none; align-items: center; }
+.nav-links a {
+  font-family: var(--font-m);
+  font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em;
+  color: var(--dim); text-decoration: none; transition: color 0.2s;
+}
+.nav-links a:hover { color: var(--text); }
+.nav-links a.active { color: var(--accent); }
+.nav-right { display: flex; align-items: center; gap: 10px; }
+.btn {
+  font-family: var(--font-m); font-size: 10px; text-transform: uppercase;
+  letter-spacing: 0.06em; padding: 7px 16px;
+  border: 1px solid var(--border-bright); background: none;
+  color: var(--dim2); cursor: pointer; text-decoration: none;
+  transition: all 0.2s; display: inline-flex; align-items: center; gap: 6px;
+}
+.btn:hover { color: var(--text); background: rgba(74,222,128,0.06); }
+.btn-fill {
+  background: var(--border-bright); color: #fff; border-color: var(--border-bright);
+}
+.btn-fill:hover { background: var(--accent); color: var(--bg); }
+.btn-sm { font-size: 9px; padding: 4px 10px; }
+
+.page-header {
+  grid-column: 1 / -1;
+  padding-bottom: 30px;
+  border-bottom: 1px solid rgba(45,90,65,0.3);
+  margin-bottom: 10px;
+}
+.page-title {
+  font-family: var(--font-d);
+  font-size: clamp(24px, 4vw, 48px);
+  font-weight: 400;
+  text-transform: uppercase;
+  letter-spacing: -0.5px;
+  color: #fff;
+  margin-bottom: 12px;
+}
+.page-sub {
+  font-size: 13px;
+  color: var(--dim2);
+  line-height: 1.7;
+  max-width: 640px;
+}
+
+@keyframes pulse { 0%{opacity:.3} 50%{opacity:1} 100%{opacity:.3} }
+.status-dot {
+  width: 8px; height: 8px;
+  background: var(--accent);
+  border-radius: 50%;
+  display: inline-block;
+  margin-right: 8px;
+  animation: pulse 2s infinite;
+}
+
+.sec-label {
+  grid-column: 1 / -1;
+  font-family: var(--font-m);
+  font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em;
+  color: var(--dim);
+  padding: 30px 0 10px;
+  border-bottom: 1px solid rgba(45,90,65,0.15);
+  margin-bottom: 10px;
+}
+
+/* Stats grid */
+.stat-row {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 1px;
+  background: var(--border-solid);
+  border: 1px solid var(--border-solid);
+}
+.stat-cell {
+  background: var(--bg);
+  padding: 20px 16px;
+  text-align: center;
+  transition: background 0.2s;
+}
+.stat-cell:hover { background: var(--surface-solid); }
+.stat-num {
+  font-family: var(--font-d);
+  font-size: 22px;
+  margin-bottom: 4px;
+}
+.stat-lbl {
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--dim);
+}
+.positive { color: var(--accent); }
+.negative { color: var(--red); }
+
+/* Chart */
+.chart-wrap {
+  grid-column: 1 / -1;
+  padding: 0;
+  overflow: hidden;
+}
+.chart-bar {
+  display: flex; align-items: center; gap: 10px; padding: 11px 18px;
+  background: var(--bg2); border-bottom: 1px solid var(--border-solid);
+}
+@keyframes pdot {
+  0%,100% { box-shadow: 0 0 4px var(--accent); }
+  50% { box-shadow: 0 0 12px var(--accent), 0 0 20px rgba(74,222,128,0.3); }
+}
+.chart-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); animation: pdot 2.4s ease infinite; }
+.chart-title { font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--dim); }
+.chart-body { padding: 20px; }
+canvas { width: 100%; height: 220px; display: block; }
+
+/* City heatmap */
+.heat-grid {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 12px;
+}
+.heat-cell {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  padding: 18px 14px;
+  text-align: center;
+  transition: border-color 0.3s;
+}
+.heat-cell:hover { border-color: var(--accent); }
+.heat-city {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+  color: var(--text);
+}
+.heat-pnl {
+  font-family: var(--font-d);
+  font-size: 20px;
+  font-weight: 400;
+  margin-bottom: 4px;
+}
+.heat-record {
+  font-size: 10px;
+  color: var(--dim);
+}
+
+/* Positions table */
+.pos-card {
+  grid-column: 1 / -1;
+  padding: 0;
+  overflow: hidden;
+}
+.pos-bar {
+  display: flex; align-items: center; gap: 10px; padding: 11px 18px;
+  background: var(--bg2); border-bottom: 1px solid var(--border-solid);
+}
+.pos-title { font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--dim); }
+.pos-meta { margin-left: auto; font-size: 10px; color: var(--dim); }
+
+.pos-table { width: 100%; border-collapse: collapse; font-family: var(--font-m); font-size: 11px; }
+.pos-table th {
+  text-align: left; padding: 10px 16px; font-size: 9px; text-transform: uppercase;
+  letter-spacing: 0.06em; color: var(--dim); border-bottom: 1px solid var(--border-solid); white-space: nowrap;
+}
+.pos-table td { padding: 10px 16px; border-bottom: 1px solid rgba(26,58,42,0.25); white-space: nowrap; }
+.pos-table tr:last-child td { border-bottom: none; }
+.pos-table tbody tr:hover { background: rgba(74,222,128,0.04); }
+
+.pill { display: inline-block; padding: 2px 8px; font-size: 9px; font-weight: 700; letter-spacing: 0.04em; }
+.pill-won { background: rgba(74,222,128,0.15); color: var(--accent); }
+.pill-lost { background: rgba(255,68,102,0.15); color: var(--red); }
+.pill-open { background: rgba(255,214,10,0.15); color: var(--yellow); }
+
+.refresh-bar {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.refresh-text {
+  color: var(--dim); font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em;
+}
+
+.tech-footer {
+  grid-column: 1 / -1;
+  margin-top: 40px;
+  border-top: 1px solid rgba(45,90,65,0.4);
+  padding-top: 20px;
+  display: flex; justify-content: space-between; align-items: flex-start;
+  flex-wrap: wrap; gap: 20px;
+}
+.footer-links { display: flex; gap: 20px; list-style: none; flex-wrap: wrap; }
+.footer-links a {
+  font-family: var(--font-m); font-size: 9px; text-transform: uppercase;
+  letter-spacing: 0.06em; color: var(--dim); text-decoration: none; transition: color 0.2s;
+}
+.footer-links a:hover { color: var(--text); }
+
+@media (max-width: 1100px) {
+  .grid { padding: 20px; gap: 14px; }
+  .stat-row { grid-template-columns: repeat(3, 1fr); }
+  .heat-grid { grid-template-columns: repeat(3, 1fr); }
+}
+@media (max-width: 640px) {
+  .grid { padding: 14px; gap: 10px; }
+  .nav-links { display: none; }
+  .stat-row { grid-template-columns: repeat(2, 1fr); }
+  .heat-grid { grid-template-columns: repeat(2, 1fr); }
+  .pos-table { font-size: 10px; }
+  .pos-table th, .pos-table td { padding: 8px 10px; }
+}
+</style>
+</head>
+<body>
+<div class="grid">
+
+  <!-- NAV -->
+  <nav class="nav">
+    <a href="/" class="nav-logo">
+      <img src="/logo.png" alt="ElementClaw" style="height:32px;width:auto;" onerror="this.onerror=null;this.src='logo.png'">
+      ElementClaw
+    </a>
+    <ul class="nav-links">
+      <li><a href="/signals">Copy Trades</a></li>
+      <li><a href="/#how">How It Works</a></li>
+      <li><a href="/dashboard" class="active">Dashboard</a></li>
+      <li><a href="/#faq">FAQ</a></li>
+    </ul>
+    <div class="nav-right">
+      <a href="https://github.com/traderfoxexe/ElementClaw" target="_blank" class="btn">GitHub</a>
+      <a href="https://x.com/tryelementclaw" target="_blank" class="btn" style="font-size:13px;padding:6px 12px;">&#120143;</a>
+      <a href="/signals" class="btn btn-fill">Copy Trades &rarr;</a>
+    </div>
+  </nav>
+
+  <!-- HEADER -->
+  <header class="page-header">
+    <h1 class="page-title"><span class="status-dot"></span>Dashboard</h1>
+    <p class="page-sub">Live performance data from ElementClaw's trading engine. P&L, equity curve, city stats, and full position history.</p>
+  </header>
+
+  <!-- STATS -->
+  <div class="sec-label">01 // PERFORMANCE OVERVIEW</div>
+  <div class="stat-row" id="statsRow">
+    <div class="stat-cell"><div class="stat-num positive" id="statPnl">+$12.47</div><div class="stat-lbl">Total P&L</div></div>
+    <div class="stat-cell"><div class="stat-num positive" id="statWinRate">61.7%</div><div class="stat-lbl">Win Rate</div></div>
+    <div class="stat-cell"><div class="stat-num" id="statTrades">47</div><div class="stat-lbl">Total Trades</div></div>
+    <div class="stat-cell"><div class="stat-num" id="statOpen">3</div><div class="stat-lbl">Open Positions</div></div>
+    <div class="stat-cell"><div class="stat-num" id="statExposure">$4.20</div><div class="stat-lbl">Open Exposure</div></div>
+  </div>
+
+  <!-- EQUITY CURVE -->
+  <div class="sec-label">02 // EQUITY CURVE</div>
+  <div class="card chart-wrap">
+    <div class="chart-bar">
+      <div class="chart-dot"></div>
+      <span class="chart-title">Cumulative P&L Over Time</span>
+    </div>
+    <div class="chart-body">
+      <canvas id="equityChart"></canvas>
+    </div>
+  </div>
+
+  <!-- CITY PERFORMANCE -->
+  <div class="sec-label">03 // CITY PERFORMANCE</div>
+  <div class="heat-grid" id="heatmap"></div>
+
+  <!-- POSITIONS -->
+  <div class="sec-label">04 // POSITION HISTORY</div>
+  <div class="card pos-card">
+    <div class="pos-bar">
+      <div class="chart-dot"></div>
+      <span class="pos-title" id="posTitle">Recent Positions</span>
+      <span class="pos-meta" id="posMeta"></span>
+    </div>
+    <div id="posBody"></div>
+  </div>
+
+  <!-- REFRESH -->
+  <div class="refresh-bar">
+    <span class="refresh-text" id="refreshText">Auto-refreshes every 30s</span>
+    <a href="/signals" class="btn btn-sm">View Signals &rarr;</a>
+  </div>
+
+  <!-- FOOTER -->
+  <footer class="tech-footer">
+    <div>
+      <span class="mono-label">Powered By</span>
+      <span style="font-size:14px;font-weight:bold;color:#fff;">OPENCLAW V.1.0</span>
+    </div>
+    <ul class="footer-links">
+      <li><a href="/signals">Signals</a></li>
+      <li><a href="/#how">How It Works</a></li>
+      <li><a href="/dashboard">Dashboard</a></li>
+      <li><a href="/setup">Setup</a></li>
+      <li><a href="/#faq">FAQ</a></li>
+    </ul>
+    <div style="text-align:right;">
+      <span class="mono-label">License</span>
+      <span style="font-size:11px;color:var(--dim);">MIT &middot; Bun + TypeScript</span>
+    </div>
+  </footer>
+
+</div>
+
+<script>
+// Sample data for when API is offline
+var SAMPLE = {
+  pnl: { totalPnl: 12.47, winRate: 0.617, totalTrades: 47, openPositions: 3, openExposure: 4.20 },
+  cityStats: [
+    { city: 'nyc', wins: 12, losses: 6, pnl: 5.82 },
+    { city: 'chicago', wins: 8, losses: 5, pnl: 2.14 },
+    { city: 'miami', wins: 6, losses: 4, pnl: 1.93 },
+    { city: 'atlanta', wins: 4, losses: 3, pnl: 0.87 },
+    { city: 'seattle', wins: 3, losses: 2, pnl: 1.12 },
+    { city: 'dallas', wins: 3, losses: 4, pnl: 0.59 }
+  ],
+  equityCurve: [
+    { time: '2026-03-20', pnl: 0 },
+    { time: '2026-03-21', pnl: 1.20 },
+    { time: '2026-03-22', pnl: 0.40 },
+    { time: '2026-03-23', pnl: 2.10 },
+    { time: '2026-03-24', pnl: 3.50 },
+    { time: '2026-03-25', pnl: 2.80 },
+    { time: '2026-03-26', pnl: 4.60 },
+    { time: '2026-03-27', pnl: 5.10 },
+    { time: '2026-03-28', pnl: 4.30 },
+    { time: '2026-03-29', pnl: 6.80 },
+    { time: '2026-03-30', pnl: 8.20 },
+    { time: '2026-03-31', pnl: 7.50 },
+    { time: '2026-04-01', pnl: 10.30 },
+    { time: '2026-04-02', pnl: 12.47 }
+  ],
+  positions: [
+    { city: 'nyc', date: '2026-04-03', side: 'YES', entryPrice: 0.735, size: 1.50, edge: 0.244, status: 'open', pnl: null, actualTemp: null },
+    { city: 'miami', date: '2026-04-03', side: 'YES', entryPrice: 0.88, size: 1.20, edge: 0.12, status: 'open', pnl: null, actualTemp: null },
+    { city: 'chicago', date: '2026-04-03', side: 'YES', entryPrice: 0.34, size: 1.50, edge: 0.11, status: 'open', pnl: null, actualTemp: null },
+    { city: 'nyc', date: '2026-04-02', side: 'YES', entryPrice: 0.72, size: 1.40, edge: 0.18, status: 'won', pnl: 0.39, actualTemp: 63 },
+    { city: 'nyc', date: '2026-04-02', side: 'YES', entryPrice: 0.81, size: 1.60, edge: 0.15, status: 'won', pnl: 0.30, actualTemp: 63 },
+    { city: 'miami', date: '2026-04-02', side: 'YES', entryPrice: 0.85, size: 1.30, edge: 0.13, status: 'won', pnl: 0.20, actualTemp: 85 },
+    { city: 'chicago', date: '2026-04-02', side: 'YES', entryPrice: 0.45, size: 1.20, edge: 0.10, status: 'lost', pnl: -0.54, actualTemp: 48 },
+    { city: 'atlanta', date: '2026-04-01', side: 'YES', entryPrice: 0.68, size: 1.40, edge: 0.16, status: 'won', pnl: 0.45, actualTemp: 72 },
+    { city: 'seattle', date: '2026-04-01', side: 'YES', entryPrice: 0.55, size: 1.10, edge: 0.12, status: 'won', pnl: 0.50, actualTemp: 58 },
+    { city: 'dallas', date: '2026-04-01', side: 'YES', entryPrice: 0.62, size: 1.30, edge: 0.14, status: 'lost', pnl: -0.81, actualTemp: 76 }
+  ]
+};
+
+function fmt(n) {
+  if (n == null) return '\u2014';
+  return (n >= 0 ? '+$' : '-$') + Math.abs(n).toFixed(2);
+}
+
+function statusPill(status) {
+  if (!status) return '';
+  var s = status.toLowerCase();
+  return '<span class="pill pill-' + s + '">' + status.toUpperCase() + '</span>';
+}
+
+function renderDashboard(d) {
+  // Stats
+  var pnl = d.pnl;
+  var pnlEl = document.getElementById('statPnl');
+  pnlEl.textContent = fmt(pnl.totalPnl);
+  pnlEl.className = 'stat-num ' + (pnl.totalPnl >= 0 ? 'positive' : 'negative');
+  document.getElementById('statWinRate').textContent = pnl.totalTrades > 0 ? (pnl.winRate * 100).toFixed(1) + '%' : 'N/A';
+  document.getElementById('statTrades').textContent = pnl.totalTrades;
+  document.getElementById('statOpen').textContent = pnl.openPositions;
+  document.getElementById('statExposure').textContent = '$' + pnl.openExposure.toFixed(2);
+
+  // City heatmap
+  document.getElementById('heatmap').innerHTML = d.cityStats.map(function(c) {
+    var cls = c.pnl >= 0 ? 'positive' : 'negative';
+    return '<div class="heat-cell">' +
+      '<div class="heat-city">' + c.city.toUpperCase() + '</div>' +
+      '<div class="heat-pnl ' + cls + '">' + fmt(c.pnl) + '</div>' +
+      '<div class="heat-record">' + c.wins + 'W / ' + c.losses + 'L</div>' +
+    '</div>';
+  }).join('');
+
+  // Positions table
+  var positions = d.positions || [];
+  document.getElementById('posMeta').textContent = positions.length + ' positions';
+  document.getElementById('posBody').innerHTML =
+    '<table class="pos-table">' +
+    '<thead><tr>' +
+    '<th>City</th><th>Date</th><th>Side</th><th>Entry</th><th>Size</th>' +
+    '<th>Edge</th><th>Actual</th><th>P&L</th><th>Status</th>' +
+    '</tr></thead>' +
+    '<tbody>' +
+    positions.map(function(p) {
+      var pnlCls = p.pnl != null ? (p.pnl >= 0 ? 'positive' : 'negative') : '';
+      return '<tr>' +
+        '<td>' + (p.city || '') + '</td>' +
+        '<td>' + (p.date || '') + '</td>' +
+        '<td>' + (p.side || '') + '</td>' +
+        '<td>' + (p.entryPrice != null ? (p.entryPrice * 100).toFixed(1) + '\u00a2' : '\u2014') + '</td>' +
+        '<td>' + (p.size != null ? '$' + p.size.toFixed(2) : '\u2014') + '</td>' +
+        '<td>' + (p.edge != null ? '+' + (p.edge * 100).toFixed(1) + '%' : '\u2014') + '</td>' +
+        '<td>' + (p.actualTemp != null ? p.actualTemp + '\u00b0F' : '\u2014') + '</td>' +
+        '<td class="' + pnlCls + '">' + (p.pnl != null ? fmt(p.pnl) : '\u2014') + '</td>' +
+        '<td>' + statusPill(p.status) + '</td>' +
+        '</tr>';
+    }).join('') +
+    '</tbody></table>';
+
+  // Equity chart
+  drawChart(d.equityCurve || []);
+
+  document.getElementById('refreshText').textContent =
+    'Last updated: ' + new Date().toLocaleTimeString() + ' \u2014 auto-refreshes every 30s';
+}
+
+function drawChart(data) {
+  var canvas = document.getElementById('equityChart');
+  var ctx = canvas.getContext('2d');
+  var dpr = window.devicePixelRatio || 1;
+  var rect = canvas.getBoundingClientRect();
+  canvas.width = rect.width * dpr;
+  canvas.height = 220 * dpr;
+  canvas.style.height = '220px';
+  ctx.scale(dpr, dpr);
+
+  var w = rect.width;
+  var h = 220;
+
+  if (data.length < 2) {
+    ctx.fillStyle = '#7a9c8a';
+    ctx.font = '12px monospace';
+    ctx.fillText('Waiting for settlements...', w / 2 - 90, h / 2);
+    return;
+  }
+
+  var pnls = data.map(function(d) { return d.pnl; });
+  var min = Math.min(0, Math.min.apply(null, pnls));
+  var max = Math.max(0, Math.max.apply(null, pnls));
+  var range = max - min || 1;
+  var pad = 30;
+
+  // Grid lines
+  ctx.strokeStyle = '#1a3a2a';
+  ctx.lineWidth = 0.5;
+  for (var i = 0; i <= 4; i++) {
+    var gy = pad + (i / 4) * (h - 2 * pad);
+    ctx.beginPath();
+    ctx.moveTo(0, gy);
+    ctx.lineTo(w, gy);
+    ctx.stroke();
+  }
+
+  // Zero line
+  var zeroY = pad + (max / range) * (h - 2 * pad);
+  ctx.strokeStyle = '#2d5a41';
+  ctx.lineWidth = 1;
+  ctx.setLineDash([4, 4]);
+  ctx.beginPath();
+  ctx.moveTo(0, zeroY);
+  ctx.lineTo(w, zeroY);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Zero label
+  ctx.fillStyle = '#7a9c8a';
+  ctx.font = '10px monospace';
+  ctx.fillText('$0', 4, zeroY - 4);
+
+  // Area fill
+  ctx.beginPath();
+  data.forEach(function(d, i) {
+    var x = (i / (data.length - 1)) * w;
+    var y = pad + ((max - d.pnl) / range) * (h - 2 * pad);
+    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+  });
+  ctx.lineTo(w, zeroY);
+  ctx.lineTo(0, zeroY);
+  ctx.closePath();
+  var lastPnl = pnls[pnls.length - 1];
+  var grad = ctx.createLinearGradient(0, 0, 0, h);
+  if (lastPnl >= 0) {
+    grad.addColorStop(0, 'rgba(74,222,128,0.15)');
+    grad.addColorStop(1, 'rgba(74,222,128,0)');
+  } else {
+    grad.addColorStop(0, 'rgba(255,68,102,0)');
+    grad.addColorStop(1, 'rgba(255,68,102,0.15)');
+  }
+  ctx.fillStyle = grad;
+  ctx.fill();
+
+  // Line
+  ctx.strokeStyle = lastPnl >= 0 ? '#4ade80' : '#ff4466';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  data.forEach(function(d, i) {
+    var x = (i / (data.length - 1)) * w;
+    var y = pad + ((max - d.pnl) / range) * (h - 2 * pad);
+    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+  });
+  ctx.stroke();
+
+  // End dot
+  var lastX = w;
+  var lastY = pad + ((max - lastPnl) / range) * (h - 2 * pad);
+  ctx.beginPath();
+  ctx.arc(lastX, lastY, 4, 0, Math.PI * 2);
+  ctx.fillStyle = lastPnl >= 0 ? '#4ade80' : '#ff4466';
+  ctx.fill();
+
+  // End label
+  ctx.fillStyle = lastPnl >= 0 ? '#4ade80' : '#ff4466';
+  ctx.font = 'bold 11px monospace';
+  ctx.fillText(fmt(lastPnl), lastX - 50, lastY - 10);
+
+  // Date labels
+  ctx.fillStyle = '#7a9c8a';
+  ctx.font = '9px monospace';
+  if (data.length > 0) {
+    ctx.fillText(data[0].time.slice(5), 2, h - 4);
+    ctx.textAlign = 'right';
+    ctx.fillText(data[data.length - 1].time.slice(5), w - 2, h - 4);
+    ctx.textAlign = 'left';
+  }
+}
+
+async function loadDashboard() {
+  try {
+    var res = await fetch('/api/data');
+    var d = await res.json();
+    renderDashboard(d);
+  } catch (err) {
+    renderDashboard(SAMPLE);
+  }
+}
+
+loadDashboard();
+setInterval(loadDashboard, 30000);
+</script>
+</body>
+</html>

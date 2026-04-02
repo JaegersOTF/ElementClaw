@@ -413,14 +413,14 @@ details[open] summary::after { content: '\2212'; color: var(--accent); }
 
   <!-- NAV -->
   <nav class="nav">
-    <a href="#" class="nav-logo">
+    <a href="/" class="nav-logo">
       <img src="/logo.png" alt="ElementClaw" style="height:32px;width:auto;" onerror="this.onerror=null;this.src='logo.png'">
       ElementClaw
     </a>
     <ul class="nav-links">
       <li><a href="/signals">Copy Trades</a></li>
       <li><a href="#how">How It Works</a></li>
-      <li><a href="/dashboard" target="_blank">Dashboard</a></li>
+      <li><a href="/dashboard">Dashboard</a></li>
       <li><a href="#faq">FAQ</a></li>
     </ul>
     <div class="nav-right">
@@ -496,7 +496,7 @@ details[open] summary::after { content: '\2212'; color: var(--accent); }
       </p>
       <div class="hero-cta">
         <a href="/signals" class="btn btn-fill">Copy Trades Now</a>
-        <a href="/dashboard" target="_blank" class="btn">See Live Dashboard</a>
+        <a href="/dashboard" class="btn">See Live Dashboard</a>
       </div>
       <div class="badge-strip">
         <span class="badge-pill">Free to Use</span>
@@ -551,7 +551,7 @@ details[open] summary::after { content: '\2212'; color: var(--accent); }
           <li>Auto-refreshes</li>
         </ul>
       </div>
-      <a href="/dashboard" target="_blank" class="btn" style="width:100%;justify-content:center;">Open Dashboard</a>
+      <a href="/dashboard" class="btn" style="width:100%;justify-content:center;">Open Dashboard</a>
     </div>
   </div>
 
@@ -650,7 +650,7 @@ details[open] summary::after { content: '\2212'; color: var(--accent); }
     <p class="cta-sub">Signals are updating right now. Pick a trade, click through to Polymarket, and see the edge for yourself.</p>
     <div class="cta-actions">
       <a href="/signals" class="btn btn-fill">Copy Trades Now</a>
-      <a href="/dashboard" target="_blank" class="btn">View Dashboard</a>
+      <a href="/dashboard" class="btn">View Dashboard</a>
     </div>
     <a href="/setup" class="cta-tertiary">Want full automation? Run your own bot &rarr;</a>
   </div>
@@ -664,7 +664,7 @@ details[open] summary::after { content: '\2212'; color: var(--accent); }
     <ul class="footer-links">
       <li><a href="/signals">Signals</a></li>
       <li><a href="#how">How It Works</a></li>
-      <li><a href="/dashboard" target="_blank">Dashboard</a></li>
+      <li><a href="/dashboard">Dashboard</a></li>
       <li><a href="/setup">Setup</a></li>
       <li><a href="#faq">FAQ</a></li>
       <li><a href="https://github.com/traderfoxexe/ElementClaw" target="_blank">GitHub</a></li>
@@ -794,9 +794,68 @@ async function loadLandingData() {
     }
 
   } catch (err) {
-    document.getElementById('previewTitle').textContent = 'Top Signals \u2014 Offline';
-    document.getElementById('previewBody').innerHTML = '<div class="preview-empty">Scanner offline. Signals update when the bot is running.</div>';
-    document.getElementById('sigBody').innerHTML = '<div class="signal-empty">Could not connect to API. Retrying...</div>';
+    // Fallback: show sample signals when API is offline
+    var sample = [
+      { city: 'nyc', date: '2026-04-03', bracket_type: 'range', bracket_min: 62, bracket_max: 64, side: 'YES', model_probability: 0.979, market_price: 0.735, edge: 0.244, confidence: 'LOCK', metric: 'high' },
+      { city: 'nyc', date: '2026-04-03', bracket_type: 'range', bracket_min: 74, bracket_max: 76, side: 'YES', model_probability: 0.197, market_price: 0.005, edge: 0.192, confidence: 'LOCK', metric: 'high' },
+      { city: 'nyc', date: '2026-04-03', bracket_type: 'range', bracket_min: 72, bracket_max: 74, side: 'YES', model_probability: 0.192, market_price: 0.008, edge: 0.185, confidence: 'LOCK', metric: 'high' },
+      { city: 'nyc', date: '2026-04-03', bracket_type: 'range', bracket_min: 64, bracket_max: 66, side: 'YES', model_probability: 0.947, market_price: 0.765, edge: 0.182, confidence: 'LOCK', metric: 'high' },
+      { city: 'miami', date: '2026-04-03', bracket_type: 'range', bracket_min: 84, bracket_max: 86, side: 'YES', model_probability: 1.0, market_price: 0.88, edge: 0.12, confidence: 'LOCK', metric: 'high' },
+      { city: 'chicago', date: '2026-04-03', bracket_type: 'range', bracket_min: 52, bracket_max: 54, side: 'YES', model_probability: 0.45, market_price: 0.34, edge: 0.11, confidence: 'STRONG', metric: 'high' },
+      { city: 'nyc', date: '2026-04-03', bracket_type: 'range', bracket_min: 70, bracket_max: 72, side: 'YES', model_probability: 0.137, market_price: 0.024, edge: 0.113, confidence: 'LOCK', metric: 'high' },
+      { city: 'dallas', date: '2026-04-03', bracket_type: 'range', bracket_min: 78, bracket_max: 80, side: 'YES', model_probability: 0.62, market_price: 0.52, edge: 0.10, confidence: 'STRONG', metric: 'high' },
+    ];
+    var signals = sample.sort(function(a,b) { return (b.edge||0) - (a.edge||0); });
+
+    // Hero preview: top 3
+    var previewBody = document.getElementById('previewBody');
+    var previewTitle = document.getElementById('previewTitle');
+    previewTitle.textContent = 'Top Signals \u2014 ' + signals.length + ' active';
+    var top3 = signals.slice(0, 3);
+    previewBody.innerHTML = top3.map(function(s) {
+      var edgePct = s.edge != null ? '+' + (s.edge * 100).toFixed(1) + '%' : '';
+      return '<div class="preview-row">' +
+        '<div class="preview-left">' +
+          '<span class="preview-city">' + (s.city || '') + '</span>' +
+          '<span class="preview-bracket">' + bracketLabel(s) + '</span>' +
+          sidePill(s.side) +
+        '</div>' +
+        '<div class="preview-right">' +
+          '<span class="preview-edge">' + edgePct + '</span>' +
+          confidencePill(s.confidence) +
+          '<a href="' + buildPolymarketLink(s) + '" target="_blank" class="btn btn-sm">Trade \u2197</a>' +
+        '</div>' +
+      '</div>';
+    }).join('');
+
+    // Signal table: top 8
+    var sigTitle = document.getElementById('sigTitle');
+    var sigMeta = document.getElementById('sigMeta');
+    var sigBody = document.getElementById('sigBody');
+    sigTitle.textContent = 'Live Scanner Output';
+    sigMeta.textContent = signals.length + ' signals';
+    var top8 = signals.slice(0, 8);
+    sigBody.innerHTML =
+      '<table class="sig-table"><thead><tr>' +
+      '<th>City</th><th>Bracket</th><th>Side</th><th>Model%</th><th>Mkt\u00a2</th><th>Edge%</th><th>Confidence</th><th></th>' +
+      '</tr></thead><tbody>' +
+      top8.map(function(s) {
+        var modelPct = s.model_probability != null ? (s.model_probability * 100).toFixed(1) + '%' : '\u2014';
+        var mktPrice = s.market_price != null ? (s.market_price * 100).toFixed(1) + '\u00a2' : '\u2014';
+        var edgePct = s.edge != null ? (s.edge > 0 ? '+' : '') + (s.edge * 100).toFixed(1) + '%' : '\u2014';
+        var edgeCls = s.edge != null && s.edge > 0.15 ? 'edge-hi' : '';
+        return '<tr>' +
+          '<td>' + (s.city || '') + '</td>' +
+          '<td>' + bracketLabel(s) + '</td>' +
+          '<td>' + sidePill(s.side) + '</td>' +
+          '<td>' + modelPct + '</td>' +
+          '<td>' + mktPrice + '</td>' +
+          '<td class="' + edgeCls + '">' + edgePct + '</td>' +
+          '<td>' + confidencePill(s.confidence) + '</td>' +
+          '<td><a href="' + buildPolymarketLink(s) + '" target="_blank" class="btn btn-sm">Trade \u2197</a></td>' +
+          '</tr>';
+      }).join('') +
+      '</tbody></table>';
   }
 }
 

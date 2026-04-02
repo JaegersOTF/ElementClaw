@@ -22,7 +22,7 @@ export function startWebDashboard(): void {
       }
 
       if (url.pathname === "/dashboard") {
-        return new Response(HTML, {
+        return new Response(Bun.file(resolve(PROJECT_ROOT, "dashboard.html")), {
           headers: { "Content-Type": "text/html" },
         });
       }
