@@ -1,8 +1,9 @@
 import { logger } from "../logger.js";
 import { fetchWithRetry } from "../utils/retry.js";
 import { CITIES } from "../config.js";
-import { getSettlement, upsertSettlement, settlePosition, getOpenPositions } from "../store/db.js";
+import { getSettlement, upsertSettlement, settlePosition, getOpenPositions, getAuditHash } from "../store/db.js";
 import { onSettlement } from "../engine/risk.js";
+import { auditSettlement } from "../engine/audit.js";
 import type { CLIReport, Position } from "../types.js";
 
 /**
@@ -75,7 +76,12 @@ export async function checkSettlements(): Promise<number> {
       : -pos.size; // loss
 
     settlePosition(pos.id, outcome, actualTemp, pnl);
-    onSettlement(outcome === "won");
+    onSettlement(outcome === "won", pos.date);
+
+    // Audit trail: log the settlement with reference to original signal hash
+    const signalHash = getAuditHash(pos.signalId) ?? "unknown";
+    auditSettlement(pos, actualTemp, outcome, pnl, signalHash);
+
     settled++;
 
     logger.info(

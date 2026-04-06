@@ -9,9 +9,11 @@ export interface RiskState {
   openCount: number;
 }
 
-const MAX_CONSECUTIVE_LOSSES = 3;
+const MAX_CONSECUTIVE_LOSS_DAYS = 3;
 
-let consecutiveLosses = 0;
+let consecutiveLossDays = 0;
+let lastSettleDateWon = false;
+let lastSettleDate = "";
 let circuitBroken = false;
 
 /**
@@ -21,7 +23,7 @@ export function checkRiskLimits(config: AppConfig, openPositions: Position[]): R
   const totalExposure = openPositions.reduce((sum, p) => sum + p.size, 0);
 
   return {
-    consecutiveLosses,
+    consecutiveLosses: consecutiveLossDays,
     circuitBroken,
     totalExposure,
     openCount: openPositions.length,
@@ -30,23 +32,37 @@ export function checkRiskLimits(config: AppConfig, openPositions: Position[]): R
 
 /**
  * Update risk state after a settlement.
+ * Tracks by settlement date — correlated losses on the same date count as one loss day.
  */
-export function onSettlement(won: boolean): void {
-  if (won) {
-    consecutiveLosses = 0;
-    if (circuitBroken) {
-      circuitBroken = false;
-      logger.info("Circuit breaker RESET after win");
+export function onSettlement(won: boolean, date?: string): void {
+  const settleDate = date ?? new Date().toISOString().slice(0, 10);
+
+  if (settleDate !== lastSettleDate) {
+    // New settlement date — check if previous date was net loss
+    if (lastSettleDate && !lastSettleDateWon) {
+      consecutiveLossDays++;
+    } else if (lastSettleDate && lastSettleDateWon) {
+      consecutiveLossDays = 0;
     }
+    lastSettleDate = settleDate;
+    lastSettleDateWon = won;
   } else {
-    consecutiveLosses++;
-    if (consecutiveLosses >= MAX_CONSECUTIVE_LOSSES) {
-      circuitBroken = true;
-      logger.warn(
-        { consecutiveLosses },
-        "CIRCUIT BREAKER TRIGGERED — trading paused",
-      );
-    }
+    // Same date — if any position won, mark the day as a win
+    if (won) lastSettleDateWon = true;
+  }
+
+  if (won && circuitBroken) {
+    circuitBroken = false;
+    consecutiveLossDays = 0;
+    logger.info("Circuit breaker RESET after win");
+  }
+
+  if (consecutiveLossDays >= MAX_CONSECUTIVE_LOSS_DAYS) {
+    circuitBroken = true;
+    logger.warn(
+      { consecutiveLossDays },
+      "CIRCUIT BREAKER TRIGGERED — trading paused",
+    );
   }
 }
 
@@ -54,7 +70,7 @@ export function onSettlement(won: boolean): void {
  * Manually reset the circuit breaker.
  */
 export function resetCircuitBreaker(): void {
-  consecutiveLosses = 0;
+  consecutiveLossDays = 0;
   circuitBroken = false;
   logger.info("Circuit breaker manually reset");
 }
@@ -75,18 +91,27 @@ export function initRiskState(): void {
   const positions = getAllPositions();
   const settled = positions.filter((p) => p.status === "won" || p.status === "lost");
 
-  // Count trailing consecutive losses
-  consecutiveLosses = 0;
+  // Group by date, check if each date had any wins
+  const dateResults = new Map<string, boolean>();
   for (const p of settled) {
-    if (p.status === "lost") {
-      consecutiveLosses++;
+    const hadWin = dateResults.get(p.date) ?? false;
+    if (p.status === "won") dateResults.set(p.date, true);
+    else if (!hadWin) dateResults.set(p.date, false);
+  }
+
+  // Count trailing consecutive loss days
+  consecutiveLossDays = 0;
+  const dates = [...dateResults.keys()].sort().reverse();
+  for (const d of dates) {
+    if (!dateResults.get(d)) {
+      consecutiveLossDays++;
     } else {
       break;
     }
   }
 
-  if (consecutiveLosses >= MAX_CONSECUTIVE_LOSSES) {
+  if (consecutiveLossDays >= MAX_CONSECUTIVE_LOSS_DAYS) {
     circuitBroken = true;
-    logger.warn({ consecutiveLosses }, "Circuit breaker active from previous session");
+    logger.warn({ consecutiveLossDays }, "Circuit breaker active from previous session");
   }
 }

@@ -1,0 +1,740 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ElementClaw — Product Walkthrough</title>
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
+<link rel="icon" type="image/svg+xml" href="/logo.svg">
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<meta name="theme-color" content="#0d1a14">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Michroma&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap');
+
+:root {
+  --bg: #0d1a14;
+  --bg2: #07110c;
+  --surface: rgba(26,58,42,0.4);
+  --border: rgba(45,90,65,0.2);
+  --border-solid: #1a3a2a;
+  --accent: #4ade80;
+  --text: #e0e7e3;
+  --dim: #7a9c8a;
+  --dim2: #9ab8a8;
+  --red: #ff4466;
+  --font-d: 'Michroma', sans-serif;
+  --font-m: 'Space Mono', monospace;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-m);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── Top bar ── */
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 64px;
+  padding: 0 48px;
+  border-bottom: 1px solid var(--border-solid);
+  background: var(--bg2);
+}
+.topbar-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  font-family: var(--font-d);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--dim);
+}
+.topbar-left .step-label {
+  color: var(--accent);
+  font-size: 13px;
+}
+.topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.topbar-right img {
+  width: 28px;
+  height: 28px;
+}
+.topbar-right .brand {
+  font-family: var(--font-d);
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--accent);
+}
+
+/* ── Step dots in topbar ── */
+.step-dots {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.step-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(74,222,128,0.15);
+  border: 1px solid rgba(74,222,128,0.3);
+  transition: all 0.4s;
+}
+.step-dot.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  box-shadow: 0 0 8px rgba(74,222,128,0.5);
+}
+.step-dot.done {
+  background: rgba(74,222,128,0.4);
+  border-color: var(--accent);
+}
+
+/* ── Main area ── */
+.main {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  height: calc(100vh - 64px);
+  padding: 28px 48px 24px;
+  position: relative;
+}
+
+/* ── Iframe wrapper ── */
+.iframe-wrap {
+  position: relative;
+  width: 80vw;
+  height: calc(100vh - 220px);
+  border: 1px solid var(--border-solid);
+  border-radius: 6px;
+  overflow: hidden;
+  background: var(--bg);
+  box-shadow: 0 0 60px rgba(0,0,0,0.5), 0 0 1px rgba(74,222,128,0.2);
+  transition: opacity 0.6s, transform 0.6s;
+}
+.iframe-wrap.fade-out {
+  opacity: 0;
+  transform: scale(0.96);
+}
+.iframe-wrap iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+  display: block;
+}
+
+/* ── Narration ── */
+.narration {
+  margin-top: 24px;
+  text-align: center;
+  min-height: 72px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+.narration-text {
+  font-size: 17px;
+  line-height: 1.6;
+  color: var(--text);
+  max-width: 900px;
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity 0.5s, transform 0.5s;
+}
+.narration-text.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ── Bottom step bar ── */
+.bottombar {
+  position: absolute;
+  bottom: 24px;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  align-items: center;
+}
+.bottom-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: rgba(74,222,128,0.12);
+  border: 1px solid rgba(74,222,128,0.25);
+  transition: all 0.4s;
+}
+.bottom-dot.active {
+  width: 32px;
+  border-radius: 5px;
+  background: var(--accent);
+  border-color: var(--accent);
+  box-shadow: 0 0 10px rgba(74,222,128,0.4);
+}
+.bottom-dot.done {
+  background: rgba(74,222,128,0.35);
+  border-color: rgba(74,222,128,0.5);
+}
+
+/* ── Cursor ── */
+.cursor {
+  width: 22px;
+  height: 22px;
+  background: radial-gradient(circle, #4ade80 0%, rgba(74,222,128,0.3) 40%, transparent 70%);
+  border-radius: 50%;
+  position: absolute;
+  pointer-events: none;
+  z-index: 1000;
+  filter: drop-shadow(0 0 10px #4ade80) drop-shadow(0 0 20px rgba(74,222,128,0.3));
+  transition: left 1s cubic-bezier(0.4,0,0.2,1), top 1s cubic-bezier(0.4,0,0.2,1);
+  opacity: 0;
+}
+.cursor.visible {
+  opacity: 1;
+}
+.cursor.clicking {
+  transform: scale(0.6);
+  transition: left 1s cubic-bezier(0.4,0,0.2,1), top 1s cubic-bezier(0.4,0,0.2,1), transform 0.15s;
+}
+.cursor-trail {
+  width: 10px;
+  height: 10px;
+  background: radial-gradient(circle, rgba(74,222,128,0.25) 0%, transparent 70%);
+  border-radius: 50%;
+  position: absolute;
+  pointer-events: none;
+  z-index: 999;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+/* ── Highlights ── */
+.highlight {
+  position: absolute;
+  pointer-events: none;
+  border: 2px solid var(--accent);
+  border-radius: 6px;
+  box-shadow: 0 0 20px rgba(74,222,128,0.35), inset 0 0 20px rgba(74,222,128,0.08);
+  animation: pulse-hl 1.5s ease-in-out infinite;
+  z-index: 998;
+  opacity: 0;
+  transition: opacity 0.4s;
+}
+.highlight.visible {
+  opacity: 1;
+}
+.highlight.ring {
+  border-radius: 50%;
+  border-width: 2px;
+  box-shadow: 0 0 24px rgba(74,222,128,0.45), 0 0 48px rgba(74,222,128,0.15);
+}
+
+@keyframes pulse-hl {
+  0%, 100% { box-shadow: 0 0 20px rgba(74,222,128,0.35), inset 0 0 20px rgba(74,222,128,0.08); }
+  50% { box-shadow: 0 0 30px rgba(74,222,128,0.55), inset 0 0 30px rgba(74,222,128,0.15); }
+}
+
+/* ── Summary overlay ── */
+.summary-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.8s;
+  z-index: 1100;
+}
+.summary-overlay.visible {
+  opacity: 1;
+}
+.summary-title {
+  font-family: var(--font-d);
+  font-size: 42px;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 32px;
+  text-shadow: 0 0 40px rgba(74,222,128,0.3);
+}
+.summary-steps {
+  display: flex;
+  gap: 48px;
+  margin-bottom: 40px;
+}
+.summary-step {
+  text-align: center;
+}
+.summary-step-num {
+  font-family: var(--font-d);
+  font-size: 28px;
+  color: var(--accent);
+  margin-bottom: 8px;
+}
+.summary-step-text {
+  font-size: 15px;
+  color: var(--dim2);
+}
+.summary-logo {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 24px;
+}
+.summary-logo img {
+  width: 40px;
+  height: 40px;
+}
+.summary-logo span {
+  font-family: var(--font-d);
+  font-size: 20px;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.summary-disclaimer {
+  font-size: 11px;
+  color: var(--dim);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+/* ── Loading overlay for iframe ── */
+.iframe-loading {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg);
+  z-index: 900;
+  transition: opacity 0.3s;
+}
+.iframe-loading.hidden { opacity: 0; pointer-events: none; }
+.iframe-loading .spinner {
+  width: 32px;
+  height: 32px;
+  border: 2px solid rgba(74,222,128,0.2);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Progress bar ── */
+.progress-bar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 2px;
+  background: var(--accent);
+  box-shadow: 0 0 8px rgba(74,222,128,0.5);
+  transition: width 0.3s linear;
+  z-index: 1200;
+}
+</style>
+</head>
+<body>
+
+<div class="progress-bar" id="progressBar"></div>
+
+<!-- Top bar -->
+<div class="topbar">
+  <div class="topbar-left">
+    <span class="step-label" id="stepLabel">Step 1 of 6</span>
+    <div class="step-dots" id="topDots"></div>
+  </div>
+  <div class="topbar-right">
+    <img src="/logo.png" alt="ElementClaw">
+    <span class="brand">ElementClaw</span>
+  </div>
+</div>
+
+<!-- Main content -->
+<div class="main">
+  <!-- Iframe area -->
+  <div class="iframe-wrap" id="iframeWrap">
+    <div class="iframe-loading" id="iframeLoading">
+      <div class="spinner"></div>
+    </div>
+    <iframe id="appFrame" src="about:blank"></iframe>
+  </div>
+
+  <!-- Narration -->
+  <div class="narration">
+    <div class="narration-text" id="narration"></div>
+  </div>
+
+  <!-- Bottom dots -->
+  <div class="bottombar" id="bottomDots"></div>
+
+  <!-- Cursor -->
+  <div class="cursor" id="cursor"></div>
+
+  <!-- Highlights (created dynamically) -->
+
+  <!-- Summary overlay -->
+  <div class="summary-overlay" id="summaryOverlay">
+    <div class="summary-logo">
+      <img src="/logo.png" alt="">
+      <span>ElementClaw</span>
+    </div>
+    <div class="summary-title">Start Copy Trading Today</div>
+    <div class="summary-steps">
+      <div class="summary-step">
+        <div class="summary-step-num">1.</div>
+        <div class="summary-step-text">Watch the signals</div>
+      </div>
+      <div class="summary-step">
+        <div class="summary-step-num">2.</div>
+        <div class="summary-step-text">Click Trade</div>
+      </div>
+      <div class="summary-step">
+        <div class="summary-step-num">3.</div>
+        <div class="summary-step-text">Collect profit</div>
+      </div>
+    </div>
+    <div class="summary-disclaimer">Paper Trading Results &mdash; Not Financial Advice</div>
+  </div>
+</div>
+
+<script>
+// ── Configuration ──
+const TOTAL_DURATION = 80000;
+const STEP_COUNT = 6;
+
+const frame = document.getElementById('appFrame');
+const iframeWrap = document.getElementById('iframeWrap');
+const iframeLoading = document.getElementById('iframeLoading');
+const narrationEl = document.getElementById('narration');
+const cursorEl = document.getElementById('cursor');
+const stepLabel = document.getElementById('stepLabel');
+const summaryOverlay = document.getElementById('summaryOverlay');
+const progressBar = document.getElementById('progressBar');
+const topDots = document.getElementById('topDots');
+const bottomDots = document.getElementById('bottomDots');
+
+let currentStep = -1;
+let startTime = 0;
+let highlights = [];
+
+// Build dots
+for (let i = 0; i < STEP_COUNT; i++) {
+  const td = document.createElement('div');
+  td.className = 'step-dot';
+  topDots.appendChild(td);
+  const bd = document.createElement('div');
+  bd.className = 'bottom-dot';
+  bottomDots.appendChild(bd);
+}
+
+function updateDots(step) {
+  topDots.querySelectorAll('.step-dot').forEach((d, i) => {
+    d.className = 'step-dot' + (i === step ? ' active' : i < step ? ' done' : '');
+  });
+  bottomDots.querySelectorAll('.bottom-dot').forEach((d, i) => {
+    d.className = 'bottom-dot' + (i === step ? ' active' : i < step ? ' done' : '');
+  });
+}
+
+// ── Helpers ──
+function setNarration(text) {
+  narrationEl.classList.remove('visible');
+  setTimeout(() => {
+    narrationEl.textContent = text;
+    narrationEl.classList.add('visible');
+  }, 200);
+}
+
+function clearNarration() {
+  narrationEl.classList.remove('visible');
+}
+
+function showCursor() { cursorEl.classList.add('visible'); }
+function hideCursor() { cursorEl.classList.remove('visible'); }
+
+function moveCursor(xPct, yPct) {
+  // xPct, yPct as fraction of iframe-wrap dimensions (0-1)
+  const wrapRect = iframeWrap.getBoundingClientRect();
+  cursorEl.style.left = (wrapRect.left + xPct * wrapRect.width - 11) + 'px';
+  cursorEl.style.top = (wrapRect.top + yPct * wrapRect.height - 11) + 'px';
+}
+
+function clickCursor() {
+  cursorEl.classList.add('clicking');
+  setTimeout(() => cursorEl.classList.remove('clicking'), 200);
+}
+
+function navigateFrame(path) {
+  iframeLoading.classList.remove('hidden');
+  frame.src = path;
+}
+
+frame.addEventListener('load', () => {
+  setTimeout(() => iframeLoading.classList.add('hidden'), 300);
+});
+
+function createHighlight(xPct, yPct, wPct, hPct, isRing) {
+  // All values as fraction of iframe-wrap dimensions (0-1)
+  const el = document.createElement('div');
+  el.className = 'highlight' + (isRing ? ' ring' : '');
+  const wrapRect = iframeWrap.getBoundingClientRect();
+  el.style.left = (wrapRect.left + xPct * wrapRect.width) + 'px';
+  el.style.top = (wrapRect.top + yPct * wrapRect.height) + 'px';
+  el.style.width = (wPct * wrapRect.width) + 'px';
+  el.style.height = (hPct * wrapRect.height) + 'px';
+  document.querySelector('.main').appendChild(el);
+  highlights.push(el);
+  setTimeout(() => el.classList.add('visible'), 50);
+  return el;
+}
+
+function clearHighlights() {
+  highlights.forEach(el => {
+    el.classList.remove('visible');
+    setTimeout(() => el.remove(), 400);
+  });
+  highlights = [];
+}
+
+function scrollIframe(y, smooth) {
+  try {
+    frame.contentWindow.scrollTo({ top: y, behavior: smooth ? 'smooth' : 'auto' });
+  } catch(e) {}
+}
+
+function scrollIframeTo(selector) {
+  try {
+    const el = frame.contentDocument.querySelector(selector);
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  } catch(e) {}
+}
+
+// ── Timeline ──
+// Each action: [timeMs, function]
+let timeline = [];
+let timelineIdx = 0;
+
+function buildTimeline() {
+  timeline = [];
+  timelineIdx = 0;
+
+  // ── Step 1: Landing Page (0-12s) ──
+  timeline.push([0, () => {
+    setStep(0);
+    navigateFrame('/');
+    setNarration('Welcome to ElementClaw \u2014 the weather prediction market trading bot');
+  }]);
+
+  timeline.push([3000, () => {
+    showCursor();
+    // Move cursor to the nav area (top right area where nav links are)
+    // On the landing page the nav "Copy Trades" link is roughly at top-right
+    moveCursor(0.68, 0.044);
+  }]);
+
+  timeline.push([4500, () => {
+    createHighlight(0.645, 0.019, 0.098, 0.05, false);
+  }]);
+
+  timeline.push([6000, () => {
+    setNarration('Click "Copy Trades" to see live trading signals');
+  }]);
+
+  timeline.push([9500, () => {
+    clickCursor();
+  }]);
+
+  timeline.push([10000, () => {
+    clearHighlights();
+    navigateFrame('/signals');
+  }]);
+
+  // ── Step 2: Signals Page (12-28s) ──
+  timeline.push([12000, () => {
+    setStep(1);
+    hideCursor();
+    setNarration('The Signals page shows real-time trading opportunities');
+  }]);
+
+  timeline.push([15000, () => {
+    // Highlight the "HOW TO COPY TRADE" info card
+    createHighlight(0.039, 0.25, 0.39, 0.278, false);
+    setNarration('Each signal shows the city, date, side, edge, and confidence level');
+  }]);
+
+  timeline.push([20000, () => {
+    clearHighlights();
+    showCursor();
+    // Move cursor to a trade button area in the signals table
+    moveCursor(0.91, 0.667);
+  }]);
+
+  timeline.push([21500, () => {
+    createHighlight(0.879, 0.647, 0.078, 0.047, false);
+    setNarration('Click "Trade" to go directly to the Polymarket market');
+  }]);
+
+  timeline.push([25000, () => {
+    setNarration('Buy YES or NO at the indicated price \u2014 that\'s it');
+  }]);
+
+  // ── Step 3: Dashboard (28-45s) ──
+  timeline.push([28000, () => {
+    clearHighlights();
+    setStep(2);
+    showCursor();
+    // Move cursor to the Dashboard nav link
+    moveCursor(0.78, 0.044);
+  }]);
+
+  timeline.push([29500, () => {
+    clickCursor();
+    navigateFrame('/dashboard');
+  }]);
+
+  timeline.push([30500, () => {
+    hideCursor();
+    setNarration('The Dashboard tracks all trading performance in real-time');
+  }]);
+
+  timeline.push([33500, () => {
+    // Highlight the P&L stat card (top left of the stats grid)
+    createHighlight(0.026, 0.167, 0.182, 0.125, false);
+    setNarration('Total P&L, win rate, and trade count at a glance');
+  }]);
+
+  timeline.push([37500, () => {
+    clearHighlights();
+    // Scroll to equity curve
+    scrollIframe(300, true);
+    setNarration('The equity curve shows cumulative profit over time');
+  }]);
+
+  timeline.push([41500, () => {
+    // Scroll to city heatmap
+    scrollIframe(600, true);
+    setNarration('Performance broken down by city \u2014 all 6 cities tracked');
+  }]);
+
+  // ── Step 4: Positions Table (45-55s) ──
+  timeline.push([45000, () => {
+    clearHighlights();
+    setStep(3);
+    // Scroll to positions table
+    scrollIframe(900, true);
+    setNarration('Every trade is logged with entry price, edge, actual temperature, and P&L');
+  }]);
+
+  timeline.push([49000, () => {
+    // Highlight won/lost rows in the table area
+    createHighlight(0.026, 0.583, 0.95, 0.05, false);
+    setNarration('Green = won, Red = lost. Full transparency on every trade');
+  }]);
+
+  // ── Step 5: Audit Trail (55-68s) ──
+  timeline.push([55000, () => {
+    clearHighlights();
+    setStep(4);
+    navigateFrame('/audit');
+    setNarration('The Audit Trail provides cryptographic proof of every signal');
+  }]);
+
+  timeline.push([58000, () => {
+    // Highlight the integrity badge area at the top of the audit page
+    createHighlight(0.039, 0.139, 0.326, 0.111, false);
+    setNarration('SHA-256 hashes verify that signals were logged before settlement');
+  }]);
+
+  timeline.push([62000, () => {
+    clearHighlights();
+    // Highlight a signal entry
+    createHighlight(0.039, 0.389, 0.924, 0.083, false);
+    setNarration('Every signal and settlement is timestamped and hash-verified');
+  }]);
+
+  // ── Step 6: Summary (68-80s) ──
+  timeline.push([68000, () => {
+    clearHighlights();
+    hideCursor();
+    setStep(5);
+    clearNarration();
+    iframeWrap.classList.add('fade-out');
+  }]);
+
+  timeline.push([69500, () => {
+    summaryOverlay.classList.add('visible');
+  }]);
+}
+
+function setStep(idx) {
+  currentStep = idx;
+  stepLabel.textContent = 'Step ' + (idx + 1) + ' of ' + STEP_COUNT;
+  updateDots(idx);
+}
+
+// ── Main loop ──
+function runWalkthrough() {
+  // Reset everything
+  clearHighlights();
+  hideCursor();
+  clearNarration();
+  iframeWrap.classList.remove('fade-out');
+  summaryOverlay.classList.remove('visible');
+  timelineIdx = 0;
+  startTime = performance.now();
+
+  buildTimeline();
+  tick();
+}
+
+function tick() {
+  const elapsed = performance.now() - startTime;
+
+  // Update progress bar
+  const progress = Math.min(elapsed / TOTAL_DURATION, 1);
+  progressBar.style.width = (progress * 100) + '%';
+
+  // Execute timeline actions
+  while (timelineIdx < timeline.length && elapsed >= timeline[timelineIdx][0]) {
+    timeline[timelineIdx][1]();
+    timelineIdx++;
+  }
+
+  if (elapsed >= TOTAL_DURATION) {
+    // Loop
+    setTimeout(runWalkthrough, 500);
+    return;
+  }
+
+  requestAnimationFrame(tick);
+}
+
+// Start after a brief delay for fonts to load
+setTimeout(runWalkthrough, 800);
+</script>
+</body>
+</html>

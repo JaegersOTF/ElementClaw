@@ -49,6 +49,14 @@ export function initSchema(db: Database): void {
   `);
 
   db.run(`
+    CREATE TABLE IF NOT EXISTS audit_hashes (
+      signal_id TEXT PRIMARY KEY,
+      hash TEXT NOT NULL,
+      created_at INTEGER NOT NULL
+    )
+  `);
+
+  db.run(`
     CREATE TABLE IF NOT EXISTS settlements (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       station TEXT NOT NULL,

@@ -3,11 +3,13 @@ import type { AppConfig, CityConfig } from "./types.js";
 export function loadConfig(): AppConfig {
   return {
     mode: (process.env["MODE"] as "paper" | "live") ?? "paper",
-    bankrollUsdc: Number(process.env["BANKROLL_USDC"] ?? "50"),
-    maxPositionPct: Number(process.env["MAX_POSITION_PCT"] ?? "0.05"),
-    minEdgePct: Number(process.env["MIN_EDGE_PCT"] ?? "8"),
+    bankrollUsdc: Number(process.env["BANKROLL_USDC"] ?? "30000"),
+    maxPositionPct: Number(process.env["MAX_POSITION_PCT"] ?? "0.02"),
+    minEdgePct: Number(process.env["MIN_EDGE_PCT"] ?? "10"),
     kellyFraction: Number(process.env["KELLY_FRACTION"] ?? "0.25"),
-    maxOpenPositions: Number(process.env["MAX_OPEN_POSITIONS"] ?? "10"),
+    maxOpenPositions: Number(process.env["MAX_OPEN_POSITIONS"] ?? "50"),
+    maxPerCityDate: Number(process.env["MAX_PER_CITY_DATE"] ?? "3"),
+    minEdgeLongshot: Number(process.env["MIN_EDGE_LONGSHOT"] ?? "20"),
     polygonPrivateKey: process.env["POLYGON_PRIVATE_KEY"],
     polymarketApiKey: process.env["POLYMARKET_API_KEY"],
     polymarketApiSecret: process.env["POLYMARKET_API_SECRET"],

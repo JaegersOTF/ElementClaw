@@ -134,6 +134,8 @@ export interface AppConfig {
   minEdgePct: number;
   kellyFraction: number;
   maxOpenPositions: number;
+  maxPerCityDate: number;
+  minEdgeLongshot: number; // higher edge required for low-probability bets
   polygonPrivateKey?: string;
   polymarketApiKey?: string;
   polymarketApiSecret?: string;

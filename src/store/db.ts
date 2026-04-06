@@ -103,6 +103,22 @@ export function getSettlement(station: string, date: string): CLIReport | null {
   return row ? { station: row.station, date: row.date, high: row.high, low: row.low } : null;
 }
 
+// --- Audit Hashes ---
+
+export function insertAuditHash(signalId: string, hash: string): void {
+  getDb().run(
+    `INSERT OR IGNORE INTO audit_hashes (signal_id, hash, created_at) VALUES (?, ?, ?)`,
+    [signalId, hash, Date.now()],
+  );
+}
+
+export function getAuditHash(signalId: string): string | null {
+  const row = getDb().query(
+    `SELECT hash FROM audit_hashes WHERE signal_id = ?`,
+  ).get(signalId) as any;
+  return row?.hash ?? null;
+}
+
 // --- Stats ---
 
 export function getStats(): { totalTrades: number; wins: number; losses: number; totalPnl: number } {

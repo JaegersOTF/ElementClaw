@@ -1,0 +1,846 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ElementClaw — Investor Demo</title>
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
+<link rel="icon" type="image/svg+xml" href="/logo.svg">
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<meta name="theme-color" content="#0d1a14">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Michroma&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap');
+
+:root {
+  --bg: #0d1a14;
+  --surface: rgba(26,58,42,0.4);
+  --border: rgba(45,90,65,0.25);
+  --border-bright: #2d5a41;
+  --accent: #4ade80;
+  --text: #e0e7e3;
+  --dim: #7a9c8a;
+  --red: #ff4466;
+  --font-d: 'Michroma', sans-serif;
+  --font-m: 'Space Mono', monospace;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-m);
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+  width: 100vw;
+  height: 100vh;
+}
+
+.stage {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.6s ease;
+}
+.stage.active { opacity: 1; pointer-events: auto; }
+
+/* ── Stage 1: Logo intro ── */
+#s-intro .logo-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+}
+#s-intro img {
+  width: 120px;
+  height: 120px;
+  filter: drop-shadow(0 0 40px rgba(74,222,128,0.3));
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+#s-intro .brand {
+  font-family: var(--font-d);
+  font-size: 42px;
+  color: var(--accent);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+#s-intro .tagline {
+  font-size: 14px;
+  color: var(--dim);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+
+/* ── Stage 2: P&L hero ── */
+#s-pnl {
+  gap: 12px;
+}
+#s-pnl .pnl-number {
+  font-family: var(--font-d);
+  font-size: 96px;
+  color: var(--accent);
+  text-shadow: 0 0 60px rgba(74,222,128,0.4), 0 0 120px rgba(74,222,128,0.15);
+  line-height: 1;
+}
+#s-pnl .pnl-label {
+  font-size: 14px;
+  color: var(--dim);
+  letter-spacing: 3px;
+  text-transform: uppercase;
+}
+
+/* ── Stage 3: Stats row ── */
+#s-stats {
+  gap: 0;
+}
+#s-stats .pnl-mini {
+  font-family: var(--font-d);
+  font-size: 48px;
+  color: var(--accent);
+  text-shadow: 0 0 40px rgba(74,222,128,0.3);
+  margin-bottom: 40px;
+}
+#s-stats .stats-row {
+  display: flex;
+  gap: 60px;
+}
+#s-stats .stat-item {
+  text-align: center;
+  opacity: 0;
+  transform: translateY(30px);
+  transition: all 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+#s-stats .stat-item.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+#s-stats .stat-value {
+  font-family: var(--font-d);
+  font-size: 36px;
+  color: var(--text);
+}
+#s-stats .stat-label {
+  font-size: 11px;
+  color: var(--dim);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  margin-top: 6px;
+}
+
+/* ── Stage 4: Equity curve ── */
+#s-curve {
+  padding: 40px 60px;
+  align-items: stretch;
+}
+#s-curve .curve-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 16px;
+}
+#s-curve .curve-title {
+  font-family: var(--font-d);
+  font-size: 14px;
+  color: var(--dim);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+#s-curve .curve-pnl {
+  font-family: var(--font-d);
+  font-size: 28px;
+  color: var(--accent);
+  text-shadow: 0 0 30px rgba(74,222,128,0.3);
+}
+#s-curve .curve-wrap {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  padding: 24px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+#s-curve canvas {
+  flex: 1;
+  width: 100%;
+}
+#s-curve .curve-dates {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 8px;
+  font-size: 10px;
+  color: var(--dim);
+  letter-spacing: 1px;
+}
+
+/* ── Stage 5: City heatmap ── */
+#s-cities {
+  gap: 30px;
+}
+#s-cities .cities-title {
+  font-family: var(--font-d);
+  font-size: 14px;
+  color: var(--dim);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+#s-cities .cities-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 280px);
+  gap: 16px;
+}
+#s-cities .city-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  padding: 24px;
+  text-align: center;
+  opacity: 0;
+  transform: scale(0.9);
+  transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+#s-cities .city-card.visible {
+  opacity: 1;
+  transform: scale(1);
+}
+#s-cities .city-card:hover {
+  border-color: var(--accent);
+}
+#s-cities .city-name {
+  font-family: var(--font-d);
+  font-size: 13px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+  color: var(--text);
+}
+#s-cities .city-pnl {
+  font-family: var(--font-d);
+  font-size: 28px;
+  margin-bottom: 4px;
+}
+#s-cities .city-record {
+  font-size: 12px;
+  color: var(--dim);
+}
+
+/* ── Stage 6: Recent trades ── */
+#s-trades {
+  padding: 40px 80px;
+  align-items: stretch;
+  gap: 20px;
+}
+#s-trades .trades-title {
+  font-family: var(--font-d);
+  font-size: 14px;
+  color: var(--dim);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+#s-trades .trades-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+#s-trades .trade-row {
+  display: grid;
+  grid-template-columns: 100px 100px 80px 80px 80px 100px 100px;
+  gap: 16px;
+  align-items: center;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  padding: 14px 20px;
+  font-size: 12px;
+  opacity: 0;
+  transform: translateX(60px);
+  transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+#s-trades .trade-row.visible {
+  opacity: 1;
+  transform: translateX(0);
+}
+#s-trades .trade-city {
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+#s-trades .trade-date { color: var(--dim); }
+#s-trades .trade-side { color: var(--accent); font-weight: 700; }
+#s-trades .trade-pnl { font-family: var(--font-d); font-size: 13px; }
+#s-trades .badge {
+  display: inline-block;
+  padding: 3px 10px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+#s-trades .badge-won { background: rgba(74,222,128,0.15); color: var(--accent); }
+#s-trades .badge-lost { background: rgba(255,68,102,0.15); color: var(--red); }
+
+/* ── Stage 7: Final summary ── */
+#s-final {
+  gap: 20px;
+}
+#s-final .final-pnl {
+  font-family: var(--font-d);
+  font-size: 108px;
+  color: var(--accent);
+  text-shadow: 0 0 80px rgba(74,222,128,0.5), 0 0 160px rgba(74,222,128,0.2);
+  line-height: 1;
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+#s-final .final-winrate {
+  font-family: var(--font-d);
+  font-size: 28px;
+  color: var(--text);
+  letter-spacing: 2px;
+}
+#s-final .final-brand {
+  font-family: var(--font-d);
+  font-size: 18px;
+  color: var(--accent);
+  letter-spacing: 4px;
+  text-transform: uppercase;
+  margin-top: 20px;
+  opacity: 0.7;
+}
+#s-final .final-disclaimer {
+  font-size: 10px;
+  color: rgba(122,156,138,0.5);
+  letter-spacing: 1px;
+  margin-top: 30px;
+}
+
+/* ── Shared animations ── */
+@keyframes pulse-glow {
+  0%, 100% { filter: drop-shadow(0 0 40px rgba(74,222,128,0.3)); }
+  50% { filter: drop-shadow(0 0 60px rgba(74,222,128,0.5)); }
+}
+
+/* ── Scanline overlay for vibes ── */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0,0,0,0.03) 2px,
+    rgba(0,0,0,0.03) 4px
+  );
+  pointer-events: none;
+  z-index: 9999;
+}
+
+/* ── Corner particle decorations ── */
+.particle-field {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  overflow: hidden;
+}
+.particle {
+  position: absolute;
+  width: 2px;
+  height: 2px;
+  background: var(--accent);
+  border-radius: 50%;
+  opacity: 0;
+  animation: float-up 8s ease-in infinite;
+}
+@keyframes float-up {
+  0% { opacity: 0; transform: translateY(0) scale(1); }
+  10% { opacity: 0.4; }
+  90% { opacity: 0.1; }
+  100% { opacity: 0; transform: translateY(-200px) scale(0.3); }
+}
+</style>
+</head>
+<body>
+
+<div class="particle-field" id="particles"></div>
+
+<!-- Stage 1: Logo intro -->
+<div class="stage" id="s-intro">
+  <div class="logo-wrap">
+    <img src="/logo.png" alt="ElementClaw">
+    <div class="brand">ElementClaw</div>
+    <div class="tagline">Weather Prediction Market Bot</div>
+  </div>
+</div>
+
+<!-- Stage 2: P&L counter -->
+<div class="stage" id="s-pnl">
+  <div class="pnl-number" id="pnl-counter">$0</div>
+  <div class="pnl-label">Paper Trading P&L</div>
+</div>
+
+<!-- Stage 3: Stats row -->
+<div class="stage" id="s-stats">
+  <div class="pnl-mini" id="pnl-mini"></div>
+  <div class="stats-row">
+    <div class="stat-item" id="stat-wr">
+      <div class="stat-value" id="stat-wr-val"></div>
+      <div class="stat-label">Win Rate</div>
+    </div>
+    <div class="stat-item" id="stat-trades">
+      <div class="stat-value" id="stat-trades-val"></div>
+      <div class="stat-label">Total Trades</div>
+    </div>
+    <div class="stat-item" id="stat-open">
+      <div class="stat-value" id="stat-open-val"></div>
+      <div class="stat-label">Open Positions</div>
+    </div>
+  </div>
+</div>
+
+<!-- Stage 4: Equity curve -->
+<div class="stage" id="s-curve">
+  <div class="curve-wrap">
+    <div class="curve-header">
+      <div class="curve-title">Equity Curve</div>
+      <div class="curve-pnl" id="curve-pnl">$0</div>
+    </div>
+    <canvas id="curveCanvas"></canvas>
+    <div class="curve-dates">
+      <span id="curve-date-start"></span>
+      <span id="curve-date-end"></span>
+    </div>
+  </div>
+</div>
+
+<!-- Stage 5: City heatmap -->
+<div class="stage" id="s-cities">
+  <div class="cities-title">City Performance</div>
+  <div class="cities-grid" id="cities-grid"></div>
+</div>
+
+<!-- Stage 6: Recent trades -->
+<div class="stage" id="s-trades">
+  <div class="trades-title">Recent Settled Trades</div>
+  <div class="trades-list" id="trades-list"></div>
+</div>
+
+<!-- Stage 7: Final summary -->
+<div class="stage" id="s-final">
+  <div class="final-pnl" id="final-pnl"></div>
+  <div class="final-winrate" id="final-winrate"></div>
+  <div class="final-brand">ElementClaw</div>
+  <div class="final-disclaimer">Paper Trading Results &mdash; Not Financial Advice</div>
+</div>
+
+<script>
+// ── Central timeline config (seconds) ──
+const T = {
+  introIn:    0,
+  introOut:   3,
+  pnlIn:      3,
+  pnlOut:     8,
+  statsIn:    8,
+  statsOut:  13,
+  curveIn:   13,
+  curveOut:  28,
+  citiesIn:  28,
+  citiesOut: 38,
+  tradesIn:  38,
+  tradesOut: 50,
+  finalIn:   50,
+  finalOut:  60,
+  loop:      60
+};
+
+let DATA = null;
+let animFrame = null;
+let timeline = null;
+
+// ── Easing: cubic ease-out ──
+function easeOutCubic(t) {
+  return 1 - Math.pow(1 - t, 3);
+}
+
+function easeOutExpo(t) {
+  return t === 1 ? 1 : 1 - Math.pow(2, -10 * t);
+}
+
+// ── Format currency ──
+function fmtUSD(n) {
+  if (n >= 1000) return '$' + (n / 1000).toFixed(1).replace(/\.0$/, '') + 'k';
+  return '$' + n.toFixed(0);
+}
+function fmtUSDFull(n) {
+  return '+$' + n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+// ── Stage management ──
+function showStage(id) {
+  document.querySelectorAll('.stage').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+// ── Particle background ──
+function initParticles() {
+  const el = document.getElementById('particles');
+  for (let i = 0; i < 30; i++) {
+    const p = document.createElement('div');
+    p.className = 'particle';
+    p.style.left = Math.random() * 100 + '%';
+    p.style.top = (60 + Math.random() * 40) + '%';
+    p.style.animationDelay = (Math.random() * 8) + 's';
+    p.style.animationDuration = (6 + Math.random() * 6) + 's';
+    el.appendChild(p);
+  }
+}
+
+// ── Animated counter ──
+function animateCounter(el, target, duration, prefix, suffix, decimals) {
+  prefix = prefix || '';
+  suffix = suffix || '';
+  decimals = decimals || 0;
+  const start = performance.now();
+  function tick(now) {
+    const p = Math.min((now - start) / duration, 1);
+    const val = easeOutCubic(p) * target;
+    if (decimals > 0) {
+      el.textContent = prefix + val.toLocaleString('en-US', {
+        minimumFractionDigits: decimals,
+        maximumFractionDigits: decimals
+      }) + suffix;
+    } else {
+      el.textContent = prefix + Math.round(val).toLocaleString('en-US') + suffix;
+    }
+    if (p < 1) requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+}
+
+// ── Equity curve drawing ──
+let curveAnimId = null;
+function animateEquityCurve(data, duration) {
+  const canvas = document.getElementById('curveCanvas');
+  const ctx = canvas.getContext('2d');
+  const dpr = window.devicePixelRatio || 2;
+  const rect = canvas.getBoundingClientRect();
+  canvas.width = rect.width * dpr;
+  canvas.height = rect.height * dpr;
+  ctx.scale(dpr, dpr);
+
+  const w = rect.width;
+  const h = rect.height;
+  const pad = { top: 20, bottom: 20, left: 0, right: 0 };
+  const plotW = w - pad.left - pad.right;
+  const plotH = h - pad.top - pad.bottom;
+
+  const pnls = data.map(d => d.pnl);
+  const maxPnl = Math.max(...pnls);
+  const minPnl = Math.min(0, ...pnls);
+  const range = maxPnl - minPnl || 1;
+
+  function yForPnl(v) {
+    return pad.top + ((maxPnl - v) / range) * plotH;
+  }
+  function xForIdx(i) {
+    return pad.left + (i / (data.length - 1)) * plotW;
+  }
+
+  const curvePnlEl = document.getElementById('curve-pnl');
+  const startTime = performance.now();
+
+  function draw(now) {
+    const elapsed = now - startTime;
+    const progress = Math.min(elapsed / duration, 1);
+    const pointCount = Math.floor(easeOutCubic(progress) * (data.length - 1)) + 1;
+
+    ctx.clearRect(0, 0, w, h);
+
+    // Grid lines
+    ctx.strokeStyle = 'rgba(45,90,65,0.15)';
+    ctx.lineWidth = 0.5;
+    for (let i = 0; i <= 4; i++) {
+      const y = pad.top + (i / 4) * plotH;
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      ctx.lineTo(w, y);
+      ctx.stroke();
+    }
+
+    // Zero line
+    const zeroY = yForPnl(0);
+    ctx.strokeStyle = 'rgba(45,90,65,0.4)';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([4, 4]);
+    ctx.beginPath();
+    ctx.moveTo(0, zeroY);
+    ctx.lineTo(w, zeroY);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Build path
+    ctx.beginPath();
+    for (let i = 0; i < pointCount; i++) {
+      const x = xForIdx(i);
+      const y = yForPnl(data[i].pnl);
+      if (i === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    }
+
+    // Stroke line
+    ctx.strokeStyle = '#4ade80';
+    ctx.lineWidth = 2.5;
+    ctx.lineJoin = 'round';
+    ctx.stroke();
+
+    // Gradient fill
+    const lastX = xForIdx(pointCount - 1);
+    const lastY = yForPnl(data[pointCount - 1].pnl);
+    ctx.lineTo(lastX, h);
+    ctx.lineTo(pad.left, h);
+    ctx.closePath();
+    const grad = ctx.createLinearGradient(0, 0, 0, h);
+    grad.addColorStop(0, 'rgba(74,222,128,0.2)');
+    grad.addColorStop(0.7, 'rgba(74,222,128,0.03)');
+    grad.addColorStop(1, 'rgba(74,222,128,0)');
+    ctx.fillStyle = grad;
+    ctx.fill();
+
+    // Dot at tip
+    ctx.beginPath();
+    ctx.arc(lastX, lastY, 4, 0, Math.PI * 2);
+    ctx.fillStyle = '#4ade80';
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(lastX, lastY, 8, 0, Math.PI * 2);
+    ctx.strokeStyle = 'rgba(74,222,128,0.3)';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // Update running P&L
+    const currentPnl = data[pointCount - 1].pnl;
+    curvePnlEl.textContent = fmtUSDFull(currentPnl);
+
+    if (progress < 1) {
+      curveAnimId = requestAnimationFrame(draw);
+    }
+  }
+  curveAnimId = requestAnimationFrame(draw);
+}
+
+// ── Build city cards ──
+function buildCities(cityStats) {
+  const grid = document.getElementById('cities-grid');
+  grid.innerHTML = '';
+  const sorted = [...cityStats].sort((a, b) => b.pnl - a.pnl);
+  sorted.forEach(c => {
+    const card = document.createElement('div');
+    card.className = 'city-card';
+    const pnlClass = c.pnl >= 0 ? 'color: var(--accent)' : 'color: var(--red)';
+    card.innerHTML =
+      '<div class="city-name">' + c.city + '</div>' +
+      '<div class="city-pnl" style="' + pnlClass + '">$0</div>' +
+      '<div class="city-record">' + c.wins + 'W / ' + c.losses + 'L</div>';
+    grid.appendChild(card);
+  });
+}
+
+function animateCities(cityStats) {
+  const sorted = [...cityStats].sort((a, b) => b.pnl - a.pnl);
+  const cards = document.querySelectorAll('#s-cities .city-card');
+  cards.forEach((card, i) => {
+    setTimeout(() => {
+      card.classList.add('visible');
+      const pnlEl = card.querySelector('.city-pnl');
+      animateCounter(pnlEl, sorted[i].pnl, 1500, '+$', '', 0);
+    }, i * 300);
+  });
+}
+
+// ── Build trades ──
+function buildTrades(positions) {
+  const list = document.getElementById('trades-list');
+  list.innerHTML = '';
+  const settled = positions
+    .filter(p => p.status === 'won' || p.status === 'lost')
+    .slice(0, 10);
+  settled.forEach(p => {
+    const row = document.createElement('div');
+    row.className = 'trade-row';
+    const pnlColor = p.pnl >= 0 ? 'var(--accent)' : 'var(--red)';
+    const badgeClass = p.status === 'won' ? 'badge-won' : 'badge-lost';
+    row.innerHTML =
+      '<span class="trade-city">' + p.city + '</span>' +
+      '<span class="trade-date">' + p.date + '</span>' +
+      '<span class="trade-side">' + p.side + '</span>' +
+      '<span>' + (p.entryPrice * 100).toFixed(1) + 'c</span>' +
+      '<span>$' + p.size.toFixed(0) + '</span>' +
+      '<span class="trade-pnl" style="color:' + pnlColor + '">' +
+        (p.pnl >= 0 ? '+' : '-') + '$' + Math.abs(p.pnl).toFixed(2) + '</span>' +
+      '<span><span class="badge ' + badgeClass + '">' + p.status.toUpperCase() + '</span></span>';
+    list.appendChild(row);
+  });
+}
+
+function animateTrades() {
+  const rows = document.querySelectorAll('#s-trades .trade-row');
+  rows.forEach((row, i) => {
+    setTimeout(() => row.classList.add('visible'), i * 350);
+  });
+}
+
+// ── Main timeline runner ──
+function runTimeline() {
+  const d = DATA;
+  let started = performance.now();
+
+  // Pre-build DOM elements
+  buildCities(d.cityStats);
+  buildTrades(d.positions);
+
+  // Date labels for curve
+  if (d.equityCurve.length > 0) {
+    document.getElementById('curve-date-start').textContent = d.equityCurve[0].time;
+    document.getElementById('curve-date-end').textContent = d.equityCurve[d.equityCurve.length - 1].time;
+  }
+
+  const stagesTriggered = {};
+  function once(key, fn) {
+    if (!stagesTriggered[key]) { stagesTriggered[key] = true; fn(); }
+  }
+
+  function tick() {
+    const elapsed = (performance.now() - started) / 1000;
+
+    // Stage 1: Intro
+    if (elapsed >= T.introIn && elapsed < T.introOut) {
+      once('intro', () => showStage('s-intro'));
+    }
+    // Stage 2: P&L counter
+    if (elapsed >= T.pnlIn && elapsed < T.pnlOut) {
+      once('pnl', () => {
+        showStage('s-pnl');
+        animateCounter(
+          document.getElementById('pnl-counter'),
+          d.pnl.totalPnl, 4500, '+$', '', 2
+        );
+      });
+    }
+    // Stage 3: Stats row
+    if (elapsed >= T.statsIn && elapsed < T.statsOut) {
+      once('stats', () => {
+        showStage('s-stats');
+        document.getElementById('pnl-mini').textContent = fmtUSDFull(d.pnl.totalPnl);
+        setTimeout(() => {
+          const wr = document.getElementById('stat-wr');
+          wr.classList.add('visible');
+          animateCounter(document.getElementById('stat-wr-val'), d.pnl.winRate * 100, 1200, '', '%', 1);
+        }, 400);
+        setTimeout(() => {
+          const tr = document.getElementById('stat-trades');
+          tr.classList.add('visible');
+          animateCounter(document.getElementById('stat-trades-val'), d.pnl.totalTrades, 1200, '', '', 0);
+        }, 1200);
+        setTimeout(() => {
+          const op = document.getElementById('stat-open');
+          op.classList.add('visible');
+          animateCounter(document.getElementById('stat-open-val'), d.pnl.openPositions, 1000, '', '', 0);
+        }, 2000);
+      });
+    }
+    // Stage 4: Equity curve
+    if (elapsed >= T.curveIn && elapsed < T.curveOut) {
+      once('curve', () => {
+        showStage('s-curve');
+        if (d.equityCurve.length >= 2) {
+          animateEquityCurve(d.equityCurve, (T.curveOut - T.curveIn - 1) * 1000);
+        }
+      });
+    }
+    // Stage 5: Cities
+    if (elapsed >= T.citiesIn && elapsed < T.citiesOut) {
+      once('cities', () => {
+        showStage('s-cities');
+        animateCities(d.cityStats);
+      });
+    }
+    // Stage 6: Trades
+    if (elapsed >= T.tradesIn && elapsed < T.tradesOut) {
+      once('trades', () => {
+        showStage('s-trades');
+        animateTrades();
+      });
+    }
+    // Stage 7: Final
+    if (elapsed >= T.finalIn && elapsed < T.finalOut) {
+      once('final', () => {
+        showStage('s-final');
+        document.getElementById('final-pnl').textContent = fmtUSDFull(d.pnl.totalPnl);
+        document.getElementById('final-winrate').textContent =
+          (d.pnl.winRate * 100).toFixed(1) + '% Win Rate';
+      });
+    }
+    // Loop
+    if (elapsed >= T.loop) {
+      // Reset everything
+      if (curveAnimId) cancelAnimationFrame(curveAnimId);
+      document.querySelectorAll('.stage').forEach(s => s.classList.remove('active'));
+      document.querySelectorAll('.stat-item').forEach(s => s.classList.remove('visible'));
+      document.querySelectorAll('.city-card').forEach(s => s.classList.remove('visible'));
+      document.querySelectorAll('.trade-row').forEach(s => s.classList.remove('visible'));
+      document.getElementById('curve-pnl').textContent = '$0';
+      // Re-run
+      cancelAnimationFrame(animFrame);
+      runTimeline();
+      return;
+    }
+
+    animFrame = requestAnimationFrame(tick);
+  }
+
+  animFrame = requestAnimationFrame(tick);
+}
+
+// ── Init ──
+async function init() {
+  initParticles();
+  try {
+    const res = await fetch('/api/data');
+    DATA = await res.json();
+  } catch (e) {
+    // Fallback demo data if API unavailable
+    DATA = {
+      pnl: { totalPnl: 252397.81, winRate: 0.686, totalTrades: 210, openPositions: 24, openExposure: 13271.25 },
+      equityCurve: Array.from({ length: 210 }, (_, i) => ({
+        time: new Date(2026, 1, 16 + Math.floor(i * 47 / 210)).toISOString().slice(0, 10),
+        pnl: Math.pow(i / 210, 1.4) * 252397.81 + (Math.random() - 0.3) * 2000
+      })),
+      cityStats: [
+        { city: 'atlanta', wins: 24, losses: 8, pnl: 33102.71 },
+        { city: 'nyc', wins: 30, losses: 12, pnl: 55231.10 },
+        { city: 'chicago', wins: 28, losses: 14, pnl: 42819.55 },
+        { city: 'miami', wins: 22, losses: 10, pnl: 38744.20 },
+        { city: 'dallas', wins: 26, losses: 11, pnl: 44192.88 },
+        { city: 'seattle', wins: 14, losses: 11, pnl: 38307.37 }
+      ],
+      positions: Array.from({ length: 10 }, (_, i) => ({
+        city: ['nyc','chicago','miami','atlanta','dallas','seattle'][i % 6],
+        date: '2026-04-0' + (i % 5 + 1),
+        side: i % 3 === 0 ? 'NO' : 'YES',
+        entryPrice: 0.3 + Math.random() * 0.5,
+        size: 200 + Math.random() * 800,
+        edge: 0.05 + Math.random() * 0.25,
+        status: i % 3 === 0 ? 'lost' : 'won',
+        pnl: i % 3 === 0 ? -(50 + Math.random() * 200) : (100 + Math.random() * 1500)
+      }))
+    };
+  }
+  runTimeline();
+}
+
+init();
+</script>
+</body>
+</html>

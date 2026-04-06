@@ -3,6 +3,8 @@ import type { Signal, ParsedMarket, EnsembleForecast, AppConfig, Position } from
 import { calculateEdge } from "./edge.js";
 import { kellySize } from "./sizing.js";
 import { calculateConsensus } from "./consensus.js";
+import { auditSignal } from "./audit.js";
+import { insertAuditHash } from "../store/db.js";
 
 const MIN_VOLUME = 1000; // $1K minimum market volume
 const MIN_HOURS_TO_SETTLE = 2; // skip markets settling within 2 hours
@@ -26,6 +28,7 @@ export function generateSignals(
 ): Signal[] {
   const signals: Signal[] = [];
   const minEdge = config.minEdgePct / 100;
+  const minEdgeLongshot = config.minEdgeLongshot / 100;
   const bankroll = config.bankrollUsdc;
   const now = Date.now();
 
@@ -34,9 +37,20 @@ export function generateSignals(
     openPositions.filter((p) => p.status === "open").map((p) => p.conditionId),
   );
 
+  // Track positions per city/date for diversification
+  const cityDateCount = new Map<string, number>();
+  for (const p of openPositions.filter((p) => p.status === "open")) {
+    const key = `${p.city}:${p.date}`;
+    cityDateCount.set(key, (cityDateCount.get(key) ?? 0) + 1);
+  }
+
   for (const market of markets) {
     // Skip if we already have a position
     if (openConditionIds.has(market.conditionId)) continue;
+
+    // Diversification: cap positions per city/date
+    const cityDateKey = `${market.city}:${market.date}`;
+    if ((cityDateCount.get(cityDateKey) ?? 0) >= config.maxPerCityDate) continue;
 
     // Skip low-volume markets
     if (market.volume < MIN_VOLUME) continue;
@@ -100,15 +114,22 @@ export function generateSignals(
       continue; // no edge
     }
 
-    if (edge < minEdge) continue;
+    // Longshots (model prob < 25%) need a higher edge to be worth it
+    const isLongshot = modelProbability < 0.25;
+    if (isLongshot && edge < minEdgeLongshot) continue;
+    if (!isLongshot && edge < minEdge) continue;
 
     // Size the position (apply consensus Kelly multiplier)
     const sizing = kellySize(modelProbability, effectivePrice, bankroll, config);
-    let adjustedSize = sizing.size * consensus.kellyMultiplier;
+    // Dampen Kelly multiplier for longshots — don't let LOCK inflate tail bets
+    const effectiveKellyMult = isLongshot
+      ? Math.min(consensus.kellyMultiplier, 0.8)
+      : consensus.kellyMultiplier;
+    let adjustedSize = sizing.size * effectiveKellyMult;
     adjustedSize = Math.min(adjustedSize, bankroll * config.maxPositionPct);
     adjustedSize = Math.floor(adjustedSize * 100) / 100;
 
-    if (adjustedSize < 0.50) continue;
+    if (adjustedSize < 1.00) continue;
 
     const signal: Signal = {
       id: crypto.randomUUID(),
@@ -123,7 +144,12 @@ export function generateSignals(
       createdAt: now,
     };
 
+    // Audit trail: hash + timestamp the signal before execution
+    const auditHash = auditSignal(signal);
+    insertAuditHash(signal.id, auditHash);
+
     signals.push(signal);
+    cityDateCount.set(cityDateKey, (cityDateCount.get(cityDateKey) ?? 0) + 1);
 
     logger.info(
       {

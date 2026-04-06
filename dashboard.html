@@ -574,18 +574,18 @@ function drawChart(data) {
   var lastPnl = pnls[pnls.length - 1];
   var grad = ctx.createLinearGradient(0, 0, 0, h);
   if (lastPnl >= 0) {
-    grad.addColorStop(0, 'rgba(74,222,128,0.15)');
-    grad.addColorStop(1, 'rgba(74,222,128,0)');
+    grad.addColorStop(0, 'rgba(74,222,128,0.4)');
+    grad.addColorStop(1, 'rgba(74,222,128,0.02)');
   } else {
-    grad.addColorStop(0, 'rgba(255,68,102,0)');
-    grad.addColorStop(1, 'rgba(255,68,102,0.15)');
+    grad.addColorStop(0, 'rgba(255,68,102,0.02)');
+    grad.addColorStop(1, 'rgba(255,68,102,0.4)');
   }
   ctx.fillStyle = grad;
   ctx.fill();
 
   // Line
   ctx.strokeStyle = lastPnl >= 0 ? '#4ade80' : '#ff4466';
-  ctx.lineWidth = 2;
+  ctx.lineWidth = 2.5;
   ctx.beginPath();
   data.forEach(function(d, i) {
     var x = (i / (data.length - 1)) * w;
@@ -594,18 +594,24 @@ function drawChart(data) {
   });
   ctx.stroke();
 
+  // Glow effect
+  ctx.shadowColor = lastPnl >= 0 ? 'rgba(74,222,128,0.6)' : 'rgba(255,68,102,0.6)';
+  ctx.shadowBlur = 8;
+  ctx.stroke();
+  ctx.shadowBlur = 0;
+
   // End dot
-  var lastX = w;
+  var lastX = w - 4;
   var lastY = pad + ((max - lastPnl) / range) * (h - 2 * pad);
   ctx.beginPath();
-  ctx.arc(lastX, lastY, 4, 0, Math.PI * 2);
+  ctx.arc(lastX, lastY, 5, 0, Math.PI * 2);
   ctx.fillStyle = lastPnl >= 0 ? '#4ade80' : '#ff4466';
   ctx.fill();
 
   // End label
   ctx.fillStyle = lastPnl >= 0 ? '#4ade80' : '#ff4466';
-  ctx.font = 'bold 11px monospace';
-  ctx.fillText(fmt(lastPnl), lastX - 50, lastY - 10);
+  ctx.font = 'bold 12px monospace';
+  ctx.fillText(fmt(lastPnl), lastX - 90, lastY - 12);
 
   // Date labels
   ctx.fillStyle = '#7a9c8a';

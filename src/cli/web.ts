@@ -1,5 +1,6 @@
 import { getDb } from "../store/db.js";
 import { getPnLSummary } from "../settlement/pnl.js";
+import { readAuditLog, verifyAuditLog, verifyEntry } from "../engine/audit.js";
 import { logger } from "../logger.js";
 import { resolve, dirname } from "path";
 import { fileURLToPath } from "url";
@@ -19,6 +20,42 @@ export function startWebDashboard(): void {
 
       if (url.pathname === "/api/data") {
         return Response.json(getDashboardData());
+      }
+
+      if (url.pathname === "/api/audit") {
+        const entries = readAuditLog();
+        const integrity = verifyAuditLog();
+        return Response.json({
+          integrity,
+          entries: entries.map((e) => ({
+            ...e,
+            verified: verifyEntry(e),
+          })),
+        });
+      }
+
+      if (url.pathname === "/audit") {
+        return new Response(Bun.file(resolve(PROJECT_ROOT, "audit.html")), {
+          headers: { "Content-Type": "text/html" },
+        });
+      }
+
+      if (url.pathname === "/walkthrough") {
+        return new Response(Bun.file(resolve(PROJECT_ROOT, "walkthrough.html")), {
+          headers: { "Content-Type": "text/html" },
+        });
+      }
+
+      if (url.pathname === "/demo") {
+        return new Response(Bun.file(resolve(PROJECT_ROOT, "demo.html")), {
+          headers: { "Content-Type": "text/html" },
+        });
+      }
+
+      if (url.pathname === "/copy-trade-demo") {
+        return new Response(Bun.file(resolve(PROJECT_ROOT, "copy-trade-demo.html")), {
+          headers: { "Content-Type": "text/html" },
+        });
       }
 
       if (url.pathname === "/dashboard") {
@@ -91,7 +128,7 @@ function getDashboardData() {
   let cumPnl = 0;
   const equityCurve = settled.map((p) => {
     cumPnl += p.pnl ?? 0;
-    return { time: p.settle_time, pnl: cumPnl };
+    return { time: new Date(p.settle_time).toISOString().slice(0, 10), pnl: cumPnl };
   });
 
   // City breakdown

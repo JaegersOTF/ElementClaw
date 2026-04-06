@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>WeatherClaw - Verifiable Audit Trail</title>
+<link rel="icon" href="/favicon.ico">
+<link href="https://fonts.googleapis.com/css2?family=Michroma&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0d1a14; --surface: rgba(26,58,42,0.4); --surface-solid: #11241a;
+    --border: #1a3a2a; --border-bright: #2d5a41;
+    --text: #e0e7e3; --dim: #7a9c8a; --green: #4ade80;
+    --red: #ff4466; --yellow: #ffd60a; --cyan: #4ade80;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Space Mono', 'SF Mono', monospace;
+    background: var(--bg); color: var(--text);
+    padding: 24px; min-height: 100vh;
+  }
+  h1 { font-family: 'Michroma', sans-serif; color: var(--cyan); font-size: 24px; margin-bottom: 8px; text-transform: uppercase; letter-spacing: -0.5px; }
+  .subtitle { color: var(--dim); font-size: 12px; margin-bottom: 24px; text-transform: uppercase; letter-spacing: 0.05em; }
+  nav { margin-bottom: 24px; display: flex; gap: 16px; }
+  nav a { color: var(--dim); text-decoration: none; font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; padding: 6px 12px; border: 1px solid var(--border); transition: all 0.3s; }
+  nav a:hover, nav a.active { color: var(--green); border-color: var(--green); }
+  .integrity-bar {
+    background: var(--surface); border: 1px solid var(--border);
+    padding: 16px 20px; margin-bottom: 24px; display: flex; gap: 32px; align-items: center;
+  }
+  .integrity-label { color: var(--dim); font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; }
+  .integrity-value { font-family: 'Michroma', sans-serif; font-size: 20px; margin-top: 2px; }
+  .verified { color: var(--green); }
+  .tampered { color: var(--red); }
+  .section { margin-bottom: 32px; }
+  .section-title { font-family: 'Michroma', sans-serif; color: var(--cyan); font-size: 12px; margin-bottom: 16px; text-transform: uppercase; letter-spacing: 0.05em; }
+  .entry {
+    background: var(--surface); border: 1px solid var(--border);
+    padding: 16px 20px; margin-bottom: 8px; transition: border-color 0.3s;
+  }
+  .entry:hover { border-color: var(--green); }
+  .entry-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+  .entry-type { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; padding: 2px 8px; }
+  .type-signal { background: rgba(74,222,128,0.15); color: var(--green); }
+  .type-settlement { background: rgba(255,214,10,0.15); color: var(--yellow); }
+  .entry-time { color: var(--dim); font-size: 11px; }
+  .entry-hash { color: var(--dim); font-size: 10px; font-family: 'Space Mono', monospace; word-break: break-all; margin-bottom: 8px; }
+  .hash-label { color: var(--dim); font-size: 9px; text-transform: uppercase; margin-right: 4px; }
+  .hash-check { margin-left: 8px; }
+  .entry-details { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px; }
+  .detail-label { color: var(--dim); font-size: 9px; text-transform: uppercase; letter-spacing: 0.06em; }
+  .detail-value { font-size: 12px; margin-top: 2px; }
+  .positive { color: var(--green); }
+  .negative { color: var(--red); }
+  .proof-chain { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border); }
+  .proof-chain-label { color: var(--dim); font-size: 9px; text-transform: uppercase; }
+  .proof-chain-hash { font-size: 10px; color: var(--cyan); word-break: break-all; }
+  .explainer {
+    background: var(--surface); border: 1px solid var(--border);
+    padding: 20px; margin-bottom: 24px; line-height: 1.6; font-size: 12px;
+  }
+  .explainer strong { color: var(--green); }
+  .empty { color: var(--dim); font-size: 12px; padding: 40px; text-align: center; }
+</style>
+</head>
+<body>
+
+<h1>Verifiable Audit Trail</h1>
+<p class="subtitle">Cryptographic proof that predictions were made before outcomes</p>
+
+<nav>
+  <a href="/">Home</a>
+  <a href="/dashboard">Dashboard</a>
+  <a href="/signals">Signals</a>
+  <a href="/audit" class="active">Audit</a>
+</nav>
+
+<div class="explainer">
+  <strong>How this works:</strong> Every trading signal is SHA-256 hashed with its market snapshot
+  (prices, volume, condition) at the exact moment the prediction is made. This hash is timestamped
+  and written to an append-only log. When the market settles, the actual outcome is recorded with a
+  back-reference to the original signal hash. Anyone can verify: (1) the signal timestamp precedes
+  the settlement, (2) the hash matches the payload, (3) the market snapshot was real.
+</div>
+
+<div id="integrity" class="integrity-bar"></div>
+
+<div class="section">
+  <div class="section-title">Audit Entries (newest first)</div>
+  <div id="entries"></div>
+</div>
+
+<script>
+async function load() {
+  const res = await fetch('/api/audit');
+  const d = await res.json();
+
+  // Integrity bar
+  const integ = d.integrity;
+  const allValid = integ.invalid === 0;
+  document.getElementById('integrity').innerHTML =
+    '<div><div class="integrity-label">Total Entries</div>' +
+    '<div class="integrity-value">' + integ.total + '</div></div>' +
+    '<div><div class="integrity-label">Verified</div>' +
+    '<div class="integrity-value verified">' + integ.valid + '</div></div>' +
+    '<div><div class="integrity-label">Tampered</div>' +
+    '<div class="integrity-value ' + (integ.invalid > 0 ? 'tampered' : 'verified') + '">' + integ.invalid + '</div></div>' +
+    '<div><div class="integrity-label">Integrity</div>' +
+    '<div class="integrity-value ' + (allValid ? 'verified' : 'tampered') + '">' +
+    (allValid ? 'VERIFIED' : 'COMPROMISED') + '</div></div>';
+
+  // Entries
+  const entries = d.entries.reverse();
+  if (entries.length === 0) {
+    document.getElementById('entries').innerHTML = '<div class="empty">No audit entries yet. Run a scan cycle to generate signals.</div>';
+    return;
+  }
+
+  document.getElementById('entries').innerHTML = entries.map(function(e) {
+    var check = e.verified
+      ? '<span class="hash-check verified">VALID</span>'
+      : '<span class="hash-check tampered">INVALID</span>';
+
+    if (e.type === 'signal') {
+      var p = e.payload;
+      var bracket = p.bracketType === 'between'
+        ? p.bracketMin + '-' + (p.bracketMax - 1) + 'F'
+        : p.bracketType + ' ' + (p.bracketType === 'above' ? p.bracketMin : p.bracketMax) + 'F';
+      return '<div class="entry">' +
+        '<div class="entry-header">' +
+        '<span class="entry-type type-signal">SIGNAL</span>' +
+        '<span class="entry-time">' + e.timestamp + '</span>' +
+        '</div>' +
+        '<div class="entry-hash"><span class="hash-label">SHA-256:</span>' + e.hash + check + '</div>' +
+        '<div class="entry-details">' +
+        detail('City', p.city.toUpperCase()) +
+        detail('Date', p.date) +
+        detail('Bracket', bracket) +
+        detail('Side', p.side) +
+        detail('Model Prob', (p.modelProbability * 100).toFixed(1) + '%') +
+        detail('Market Price', (p.marketPriceAtSignal * 100).toFixed(1) + 'c') +
+        detail('Edge', (p.edge * 100).toFixed(1) + '%') +
+        detail('Size', '$' + p.size.toFixed(2)) +
+        detail('Confidence', p.confidence) +
+        detail('Mkt Yes', (p.marketSnapshot.yesPrice * 100).toFixed(1) + 'c') +
+        detail('Mkt No', (p.marketSnapshot.noPrice * 100).toFixed(1) + 'c') +
+        detail('Volume', '$' + p.marketSnapshot.volume.toLocaleString()) +
+        '</div></div>';
+    } else {
+      var s = e.payload;
+      var pnlClass = s.pnl >= 0 ? 'positive' : 'negative';
+      var pnlStr = s.pnl >= 0 ? '+$' + s.pnl.toFixed(2) : '-$' + Math.abs(s.pnl).toFixed(2);
+      return '<div class="entry">' +
+        '<div class="entry-header">' +
+        '<span class="entry-type type-settlement">SETTLEMENT</span>' +
+        '<span class="entry-time">' + e.timestamp + '</span>' +
+        '</div>' +
+        '<div class="entry-hash"><span class="hash-label">SHA-256:</span>' + e.hash + check + '</div>' +
+        '<div class="entry-details">' +
+        detail('City', s.city.toUpperCase()) +
+        detail('Date', s.date) +
+        detail('Side', s.side) +
+        detail('Entry Price', (s.entryPrice * 100).toFixed(1) + 'c') +
+        detail('Size', '$' + s.size.toFixed(2)) +
+        detail('Actual Temp', s.actualTemp + 'F') +
+        '<div><div class="detail-label">Outcome</div><div class="detail-value ' +
+          (s.outcome === 'won' ? 'positive' : 'negative') + '">' + s.outcome.toUpperCase() + '</div></div>' +
+        '<div><div class="detail-label">P&L</div><div class="detail-value ' + pnlClass + '">' + pnlStr + '</div></div>' +
+        '</div>' +
+        '<div class="proof-chain">' +
+        '<div class="proof-chain-label">Original Signal Hash (pre-image proof)</div>' +
+        '<div class="proof-chain-hash">' + s.originalSignalHash + '</div>' +
+        '</div></div>';
+    }
+  }).join('');
+}
+
+function detail(label, value) {
+  return '<div><div class="detail-label">' + label + '</div><div class="detail-value">' + value + '</div></div>';
+}
+
+load();
+setInterval(load, 30000);
+</script>
+</body>
+</html>

@@ -1,0 +1,1240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ElementClaw — How to Copy Trade</title>
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
+<link rel="icon" type="image/svg+xml" href="/logo.svg">
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<meta name="theme-color" content="#0d1a14">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Michroma&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap');
+
+:root {
+  --bg: #0d1a14;
+  --surface: rgba(26,58,42,0.4);
+  --surface-solid: #11241a;
+  --border: rgba(45,90,65,0.25);
+  --border-bright: #2d5a41;
+  --accent: #4ade80;
+  --text: #e0e7e3;
+  --dim: #7a9c8a;
+  --red: #ff4466;
+  --yellow: #ffd60a;
+  --gold: #f5a623;
+  --cyan: #4adeac;
+  --font-d: 'Michroma', sans-serif;
+  --font-m: 'Space Mono', monospace;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-m);
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+  width: 100vw;
+  height: 100vh;
+}
+
+/* ── Stage system ── */
+.stage {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.6s ease;
+}
+.stage.active { opacity: 1; pointer-events: auto; }
+
+/* ── Step indicator ── */
+.step-indicator {
+  position: fixed;
+  bottom: 40px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 12px;
+  z-index: 100;
+}
+.step-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(74,222,128,0.15);
+  border: 1px solid rgba(74,222,128,0.3);
+  transition: all 0.4s ease;
+}
+.step-dot.active {
+  background: var(--accent);
+  box-shadow: 0 0 12px rgba(74,222,128,0.5);
+  transform: scale(1.3);
+}
+
+/* ── Stage 1: Intro ── */
+#s-intro .logo-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+}
+#s-intro img {
+  width: 100px;
+  height: 100px;
+  filter: drop-shadow(0 0 40px rgba(74,222,128,0.3));
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+#s-intro .brand {
+  font-family: var(--font-d);
+  font-size: 38px;
+  color: var(--accent);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+#s-intro .tagline {
+  font-size: 16px;
+  color: var(--text);
+  letter-spacing: 3px;
+  text-transform: uppercase;
+}
+#s-intro .sub-tagline {
+  font-size: 11px;
+  color: var(--dim);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  margin-top: 4px;
+}
+
+/* ── Stage 2: The Edge ── */
+#s-edge {
+  padding: 40px 80px;
+}
+#s-edge .edge-layout {
+  display: flex;
+  align-items: center;
+  gap: 40px;
+  width: 100%;
+  max-width: 1100px;
+}
+#s-edge .edge-panel {
+  flex: 1;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  padding: 32px;
+  min-height: 320px;
+  opacity: 0;
+  transition: opacity 0.6s ease, transform 0.6s cubic-bezier(0.16,1,0.3,1);
+}
+#s-edge .edge-panel.from-left {
+  transform: translateX(-40px);
+}
+#s-edge .edge-panel.from-right {
+  transform: translateX(40px);
+}
+#s-edge .edge-panel.visible {
+  opacity: 1;
+  transform: translateX(0);
+}
+#s-edge .panel-label {
+  font-family: var(--font-d);
+  font-size: 10px;
+  color: var(--dim);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  margin-bottom: 20px;
+}
+#s-edge .panel-title {
+  font-family: var(--font-d);
+  font-size: 16px;
+  color: var(--accent);
+  margin-bottom: 24px;
+}
+
+/* Ensemble bars */
+.ensemble-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  height: 120px;
+  margin-bottom: 20px;
+}
+.ensemble-bar {
+  flex: 1;
+  background: rgba(74,222,128,0.2);
+  border-top: 2px solid var(--accent);
+  min-width: 6px;
+  transition: height 1s cubic-bezier(0.16,1,0.3,1);
+}
+.ensemble-bar.highlight {
+  background: rgba(74,222,128,0.5);
+}
+.prob-result {
+  font-family: var(--font-d);
+  font-size: 20px;
+  color: var(--accent);
+  margin-top: 8px;
+}
+.prob-desc {
+  font-size: 11px;
+  color: var(--dim);
+  margin-top: 4px;
+}
+
+/* Market card mock */
+.market-mock {
+  background: rgba(20,20,30,0.6);
+  border: 1px solid rgba(100,100,140,0.2);
+  border-radius: 8px;
+  padding: 24px;
+}
+.market-mock-title {
+  font-size: 13px;
+  color: #ccc;
+  margin-bottom: 16px;
+  line-height: 1.5;
+}
+.market-mock-event {
+  font-size: 14px;
+  font-weight: 700;
+  color: #fff;
+  margin-bottom: 20px;
+  line-height: 1.5;
+}
+.market-prices {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.market-price-btn {
+  flex: 1;
+  padding: 16px;
+  text-align: center;
+  border-radius: 6px;
+  font-family: var(--font-d);
+  font-size: 22px;
+  border: 2px solid transparent;
+  transition: all 0.3s ease;
+}
+.market-yes {
+  background: rgba(74,222,128,0.1);
+  color: var(--accent);
+  border-color: rgba(74,222,128,0.2);
+}
+.market-no {
+  background: rgba(255,68,102,0.1);
+  color: var(--red);
+  border-color: rgba(255,68,102,0.2);
+}
+.market-price-label {
+  font-family: var(--font-m);
+  font-size: 10px;
+  display: block;
+  margin-bottom: 4px;
+  opacity: 0.6;
+}
+.market-volume {
+  font-size: 10px;
+  color: rgba(200,200,220,0.4);
+}
+
+/* Edge arrow */
+.edge-arrow-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  opacity: 0;
+  transform: scale(0.5);
+  transition: all 0.5s cubic-bezier(0.16,1,0.3,1);
+}
+.edge-arrow-wrap.visible {
+  opacity: 1;
+  transform: scale(1);
+}
+.edge-arrow {
+  font-size: 32px;
+  color: var(--accent);
+  animation: arrow-pulse 1.5s ease-in-out infinite;
+}
+.edge-value {
+  font-family: var(--font-d);
+  font-size: 22px;
+  color: var(--accent);
+  text-shadow: 0 0 20px rgba(74,222,128,0.5);
+  white-space: nowrap;
+}
+.edge-caption {
+  font-size: 10px;
+  color: var(--dim);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+@keyframes arrow-pulse {
+  0%, 100% { transform: scaleX(1); }
+  50% { transform: scaleX(1.15); }
+}
+
+.stage-label {
+  position: absolute;
+  bottom: 70px;
+  font-size: 11px;
+  color: var(--dim);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  opacity: 0;
+  transition: opacity 0.5s ease;
+}
+.stage-label.visible { opacity: 1; }
+
+/* ── Stage 3: Signal Card ── */
+#s-signal {
+  gap: 24px;
+}
+.signal-card-wrap {
+  opacity: 0;
+  transform: translateY(40px) scale(0.95);
+  transition: all 0.7s cubic-bezier(0.16,1,0.3,1);
+}
+.signal-card-wrap.visible {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+.signal-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  width: 820px;
+  padding: 28px 32px;
+  display: grid;
+  grid-template-columns: 180px 1fr 120px;
+  gap: 24px;
+  align-items: center;
+}
+.signal-card:hover {
+  border-color: var(--accent);
+}
+.signal-city {
+  font-family: var(--font-d);
+  font-size: 22px;
+  color: var(--text);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+.signal-date {
+  font-size: 12px;
+  color: var(--dim);
+  margin-top: 4px;
+}
+.signal-market {
+  font-size: 12px;
+  color: var(--dim);
+  margin-top: 8px;
+}
+.signal-details {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+}
+.signal-detail {
+  text-align: center;
+}
+.signal-detail-label {
+  font-size: 9px;
+  color: var(--dim);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+.signal-detail-value {
+  font-family: var(--font-d);
+  font-size: 18px;
+}
+.signal-detail-value.green { color: var(--accent); }
+.signal-detail-value.white { color: var(--text); }
+.signal-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+.badge-side {
+  display: inline-block;
+  padding: 4px 14px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  background: rgba(74,222,128,0.15);
+  color: var(--accent);
+}
+.badge-conf {
+  display: inline-block;
+  padding: 4px 14px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  background: rgba(245,166,35,0.15);
+  color: var(--gold);
+}
+.trade-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 24px;
+  background: rgba(74,222,128,0.12);
+  border: 1px solid var(--accent);
+  color: var(--accent);
+  font-family: var(--font-m);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  opacity: 0;
+}
+.trade-btn.visible {
+  opacity: 1;
+  animation: trade-pulse 1.5s ease-in-out infinite;
+}
+@keyframes trade-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(74,222,128,0); }
+  50% { box-shadow: 0 0 20px 4px rgba(74,222,128,0.2); }
+}
+
+/* ── Stage 4: Polymarket Flow ── */
+#s-polymarket {
+  gap: 0;
+  padding: 40px 80px;
+}
+.poly-mock {
+  background: rgba(16,16,24,0.9);
+  border: 1px solid rgba(60,60,80,0.3);
+  border-radius: 12px;
+  width: 680px;
+  padding: 36px;
+  opacity: 0;
+  transform: translateY(30px);
+  transition: all 0.6s cubic-bezier(0.16,1,0.3,1);
+}
+.poly-mock.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+.poly-header {
+  font-size: 15px;
+  color: #fff;
+  line-height: 1.6;
+  margin-bottom: 28px;
+  font-weight: 700;
+}
+.poly-buttons {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+.poly-btn {
+  flex: 1;
+  padding: 20px;
+  text-align: center;
+  border-radius: 10px;
+  font-family: var(--font-d);
+  font-size: 26px;
+  border: 2px solid transparent;
+  transition: all 0.4s ease;
+  cursor: pointer;
+}
+.poly-yes {
+  background: rgba(74,222,128,0.08);
+  color: var(--accent);
+  border-color: rgba(74,222,128,0.15);
+}
+.poly-no {
+  background: rgba(255,68,102,0.08);
+  color: var(--red);
+  border-color: rgba(255,68,102,0.15);
+}
+.poly-btn-label {
+  font-family: var(--font-m);
+  font-size: 11px;
+  display: block;
+  margin-bottom: 6px;
+  opacity: 0.5;
+}
+.poly-yes.selected {
+  background: rgba(74,222,128,0.2);
+  border-color: var(--accent);
+  box-shadow: 0 0 30px rgba(74,222,128,0.2);
+}
+.poly-order {
+  background: rgba(26,58,42,0.3);
+  border: 1px solid rgba(74,222,128,0.15);
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 20px;
+  opacity: 0;
+  transform: translateY(15px);
+  transition: all 0.5s ease;
+}
+.poly-order.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+.poly-order-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  padding: 6px 0;
+}
+.poly-order-row .label { color: var(--dim); }
+.poly-order-row .value { color: var(--text); font-weight: 700; }
+.poly-confirm {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 14px;
+  font-family: var(--font-d);
+  font-size: 14px;
+  color: var(--accent);
+  opacity: 0;
+  transition: opacity 0.4s ease;
+}
+.poly-confirm.visible { opacity: 1; }
+.poly-checkmark {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: rgba(74,222,128,0.2);
+  border: 2px solid var(--accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+}
+
+/* ── Stage 5: Settlement ── */
+#s-settle {
+  gap: 24px;
+}
+.settle-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 28px;
+  width: 600px;
+}
+.thermometer-wrap {
+  display: flex;
+  align-items: center;
+  gap: 32px;
+  opacity: 0;
+  transition: all 0.6s ease;
+}
+.thermometer-wrap.visible { opacity: 1; }
+.thermometer {
+  width: 48px;
+  height: 240px;
+  background: rgba(26,58,42,0.3);
+  border: 1px solid var(--border);
+  border-radius: 24px 24px 30px 30px;
+  position: relative;
+  overflow: hidden;
+}
+.therm-fill {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: linear-gradient(to top, var(--red), var(--gold), var(--accent));
+  border-radius: 0 0 24px 24px;
+  transition: height 2s cubic-bezier(0.16,1,0.3,1);
+}
+.therm-bulb {
+  position: absolute;
+  bottom: -6px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--red);
+  border: 2px solid var(--border);
+}
+.therm-marks {
+  position: absolute;
+  top: 10px;
+  bottom: 50px;
+  right: -40px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  font-size: 9px;
+  color: var(--dim);
+}
+.temp-readout {
+  text-align: center;
+}
+.temp-actual {
+  font-family: var(--font-d);
+  font-size: 64px;
+  color: var(--accent);
+  text-shadow: 0 0 40px rgba(74,222,128,0.3);
+  opacity: 0;
+  transition: opacity 0.5s ease;
+}
+.temp-actual.visible { opacity: 1; }
+.temp-label {
+  font-size: 12px;
+  color: var(--dim);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  margin-top: 4px;
+}
+.bracket-check {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-family: var(--font-d);
+  font-size: 16px;
+  padding: 14px 24px;
+  background: rgba(74,222,128,0.08);
+  border: 1px solid rgba(74,222,128,0.2);
+  opacity: 0;
+  transform: scale(0.9);
+  transition: all 0.4s ease;
+}
+.bracket-check.visible {
+  opacity: 1;
+  transform: scale(1);
+}
+.bracket-icon {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  color: var(--bg);
+  font-weight: 700;
+}
+.result-won {
+  font-family: var(--font-d);
+  font-size: 32px;
+  color: var(--accent);
+  text-shadow: 0 0 30px rgba(74,222,128,0.4);
+  letter-spacing: 3px;
+  opacity: 0;
+  transition: opacity 0.4s ease;
+}
+.result-won.visible { opacity: 1; }
+.pnl-calc {
+  font-family: var(--font-d);
+  font-size: 20px;
+  color: var(--text);
+  opacity: 0;
+  transition: opacity 0.4s ease;
+}
+.pnl-calc.visible { opacity: 1; }
+.pnl-calc .profit { color: var(--accent); }
+
+/* ── Stage 6: Summary ── */
+#s-summary {
+  gap: 24px;
+}
+#s-summary .summary-stats {
+  display: flex;
+  gap: 48px;
+  margin-bottom: 12px;
+}
+#s-summary .sum-stat {
+  text-align: center;
+  opacity: 0;
+  transform: translateY(20px);
+  transition: all 0.5s cubic-bezier(0.16,1,0.3,1);
+}
+#s-summary .sum-stat.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+#s-summary .sum-stat-value {
+  font-family: var(--font-d);
+  font-size: 36px;
+  color: var(--accent);
+  text-shadow: 0 0 30px rgba(74,222,128,0.3);
+}
+#s-summary .sum-stat-label {
+  font-size: 10px;
+  color: var(--dim);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  margin-top: 4px;
+}
+.summary-cities {
+  font-size: 13px;
+  color: var(--dim);
+  letter-spacing: 1px;
+  opacity: 0;
+  transition: opacity 0.5s ease;
+}
+.summary-cities.visible { opacity: 1; }
+.summary-refresh {
+  font-size: 11px;
+  color: var(--dim);
+  letter-spacing: 1px;
+  opacity: 0;
+  transition: opacity 0.5s ease;
+}
+.summary-refresh.visible { opacity: 1; }
+.summary-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 36px;
+  background: rgba(74,222,128,0.12);
+  border: 1px solid var(--accent);
+  color: var(--accent);
+  font-family: var(--font-d);
+  font-size: 14px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  opacity: 0;
+  transform: translateY(10px);
+  transition: all 0.5s ease;
+}
+.summary-cta.visible {
+  opacity: 1;
+  transform: translateY(0);
+  animation: trade-pulse 2s ease-in-out infinite;
+}
+.summary-brand {
+  font-family: var(--font-d);
+  font-size: 16px;
+  color: var(--accent);
+  letter-spacing: 4px;
+  text-transform: uppercase;
+  opacity: 0.6;
+  margin-top: 8px;
+}
+.summary-disclaimer {
+  font-size: 9px;
+  color: rgba(122,156,138,0.4);
+  letter-spacing: 1px;
+  margin-top: 20px;
+}
+
+/* ── Shared ── */
+@keyframes pulse-glow {
+  0%, 100% { filter: drop-shadow(0 0 40px rgba(74,222,128,0.3)); }
+  50% { filter: drop-shadow(0 0 60px rgba(74,222,128,0.5)); }
+}
+
+/* Scanline overlay */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0,0,0,0.03) 2px,
+    rgba(0,0,0,0.03) 4px
+  );
+  pointer-events: none;
+  z-index: 9999;
+}
+
+/* Particle field */
+.particle-field {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  overflow: hidden;
+}
+.particle {
+  position: absolute;
+  width: 2px;
+  height: 2px;
+  background: var(--accent);
+  border-radius: 50%;
+  opacity: 0;
+  animation: float-up 8s ease-in infinite;
+}
+@keyframes float-up {
+  0% { opacity: 0; transform: translateY(0) scale(1); }
+  10% { opacity: 0.4; }
+  90% { opacity: 0.1; }
+  100% { opacity: 0; transform: translateY(-200px) scale(0.3); }
+}
+</style>
+</head>
+<body>
+
+<div class="particle-field" id="particles"></div>
+
+<!-- Step dots -->
+<div class="step-indicator" id="step-dots"></div>
+
+<!-- Stage 1: Intro -->
+<div class="stage" id="s-intro">
+  <div class="logo-wrap">
+    <img src="/logo.png" alt="ElementClaw">
+    <div class="brand">ElementClaw</div>
+    <div class="tagline">How to Copy Trade</div>
+    <div class="sub-tagline">Weather Prediction Markets on Polymarket</div>
+  </div>
+</div>
+
+<!-- Stage 2: The Edge -->
+<div class="stage" id="s-edge">
+  <div class="edge-layout">
+    <div class="edge-panel from-left" id="forecast-panel">
+      <div class="panel-label">GFS Ensemble &mdash; 31 Members</div>
+      <div class="panel-title">NYC High Temp &mdash; Apr 7, 2026</div>
+      <div class="ensemble-bars" id="ensemble-bars"></div>
+      <div class="prob-result" id="prob-result"></div>
+      <div class="prob-desc">21 of 31 ensemble members forecast high &gt; 72&deg;F</div>
+    </div>
+    <div class="edge-arrow-wrap" id="edge-arrow">
+      <div class="edge-caption">Mispricing</div>
+      <div class="edge-arrow">&harr;</div>
+      <div class="edge-value">EDGE: +16%</div>
+    </div>
+    <div class="edge-panel from-right" id="market-panel">
+      <div class="panel-label">Polymarket &mdash; Live Price</div>
+      <div class="panel-title">High Temp Above 72&deg;F?</div>
+      <div class="market-mock">
+        <div class="market-mock-event">Will the high temperature in NYC be above 72&deg;F on April 7?</div>
+        <div class="market-prices">
+          <div class="market-price-btn market-yes">
+            <span class="market-price-label">YES</span>
+            52&cent;
+          </div>
+          <div class="market-price-btn market-no">
+            <span class="market-price-label">NO</span>
+            48&cent;
+          </div>
+        </div>
+        <div class="market-volume">$23,400 volume</div>
+      </div>
+    </div>
+  </div>
+  <div class="stage-label" id="edge-label">Our models see what the market doesn't</div>
+</div>
+
+<!-- Stage 3: Signal Card -->
+<div class="stage" id="s-signal">
+  <div class="signal-card-wrap" id="signal-wrap">
+    <div class="signal-card">
+      <div>
+        <div class="signal-city">NYC</div>
+        <div class="signal-date">Apr 7, 2026</div>
+        <div class="signal-market">High temp above 72&deg;F</div>
+      </div>
+      <div class="signal-details">
+        <div class="signal-detail">
+          <div class="signal-detail-label">Model Prob</div>
+          <div class="signal-detail-value green">68%</div>
+        </div>
+        <div class="signal-detail">
+          <div class="signal-detail-label">Market</div>
+          <div class="signal-detail-value white">52&cent;</div>
+        </div>
+        <div class="signal-detail">
+          <div class="signal-detail-label">Edge</div>
+          <div class="signal-detail-value green">+16%</div>
+        </div>
+        <div class="signal-detail">
+          <div class="signal-detail-label">Size</div>
+          <div class="signal-detail-value white">$600</div>
+        </div>
+      </div>
+      <div class="signal-actions">
+        <span class="badge-side">YES</span>
+        <span class="badge-conf">LOCK</span>
+        <button class="trade-btn" id="trade-btn">Trade &#8599;</button>
+      </div>
+    </div>
+  </div>
+  <div class="stage-label" id="signal-label">Signals ranked by confidence and edge</div>
+</div>
+
+<!-- Stage 4: Polymarket Flow -->
+<div class="stage" id="s-polymarket">
+  <div class="poly-mock" id="poly-mock">
+    <div class="poly-header">Will the high temperature in NYC be above 72&deg;F on April 7?</div>
+    <div class="poly-buttons">
+      <div class="poly-btn poly-yes" id="poly-yes-btn">
+        <span class="poly-btn-label">Buy YES</span>
+        52&cent;
+      </div>
+      <div class="poly-btn poly-no" id="poly-no-btn">
+        <span class="poly-btn-label">Buy NO</span>
+        48&cent;
+      </div>
+    </div>
+    <div class="poly-order" id="poly-order">
+      <div class="poly-order-row">
+        <span class="label">Side</span>
+        <span class="value" style="color: var(--accent);">Buy YES</span>
+      </div>
+      <div class="poly-order-row">
+        <span class="label">Price</span>
+        <span class="value">52&cent;</span>
+      </div>
+      <div class="poly-order-row">
+        <span class="label">Shares</span>
+        <span class="value">1,153</span>
+      </div>
+      <div class="poly-order-row">
+        <span class="label">Cost</span>
+        <span class="value">$600.00</span>
+      </div>
+    </div>
+    <div class="poly-confirm" id="poly-confirm">
+      <div class="poly-checkmark">&#10003;</div>
+      <span>Order Placed</span>
+    </div>
+  </div>
+  <div class="stage-label" id="poly-label">One click from signal to trade</div>
+</div>
+
+<!-- Stage 5: Settlement -->
+<div class="stage" id="s-settle">
+  <div class="settle-wrap">
+    <div class="thermometer-wrap" id="therm-wrap">
+      <div class="thermometer">
+        <div class="therm-fill" id="therm-fill" style="height: 0%;"></div>
+        <div class="therm-bulb"></div>
+        <div class="therm-marks">
+          <span>80&deg;F</span>
+          <span>72&deg;F</span>
+          <span>64&deg;F</span>
+          <span>56&deg;F</span>
+        </div>
+      </div>
+      <div class="temp-readout">
+        <div class="temp-actual" id="temp-actual">74&deg;F</div>
+        <div class="temp-label">Actual High &mdash; NYC, Apr 7</div>
+      </div>
+    </div>
+    <div class="bracket-check" id="bracket-check">
+      <div class="bracket-icon">&#10003;</div>
+      <span>Above 72&deg;F</span>
+    </div>
+    <div class="result-won" id="result-won">RESULT: WON</div>
+    <div class="pnl-calc" id="pnl-calc">$600 &rarr; $1,153 = <span class="profit">+$553 profit</span></div>
+  </div>
+  <div class="stage-label" id="settle-label">Markets settle automatically &mdash; no action needed</div>
+</div>
+
+<!-- Stage 6: Summary -->
+<div class="stage" id="s-summary">
+  <div class="summary-stats">
+    <div class="sum-stat" id="sum-trades">
+      <div class="sum-stat-value">210</div>
+      <div class="sum-stat-label">Trades</div>
+    </div>
+    <div class="sum-stat" id="sum-winrate">
+      <div class="sum-stat-value">68.6%</div>
+      <div class="sum-stat-label">Win Rate</div>
+    </div>
+    <div class="sum-stat" id="sum-pnl">
+      <div class="sum-stat-value">+$252,397</div>
+      <div class="sum-stat-label">Paper P&L</div>
+    </div>
+  </div>
+  <div class="summary-cities" id="sum-cities">6 Cities &mdash; NYC, Chicago, Miami, Atlanta, Seattle, Dallas</div>
+  <div class="summary-refresh" id="sum-refresh">Signals refresh every 30 seconds</div>
+  <div class="summary-cta" id="sum-cta">Start Copy Trading &rarr;</div>
+  <div class="summary-brand">ElementClaw</div>
+  <div class="summary-disclaimer">Paper Trading Results &mdash; Not Financial Advice</div>
+</div>
+
+<script>
+// ── Timeline (seconds) ──
+var T = {
+  introIn:   0,   introOut:   3,
+  edgeIn:    3,   edgeOut:   10,
+  signalIn: 10,   signalOut: 18,
+  polyIn:   18,   polyOut:   30,
+  settleIn: 30,   settleOut: 40,
+  sumIn:    40,   sumOut:    50,
+  loop:     50
+};
+
+var STAGES = ['s-intro','s-edge','s-signal','s-polymarket','s-settle','s-summary'];
+var animFrame = null;
+
+// ── Particles ──
+function initParticles() {
+  var el = document.getElementById('particles');
+  for (var i = 0; i < 30; i++) {
+    var p = document.createElement('div');
+    p.className = 'particle';
+    p.style.left = Math.random() * 100 + '%';
+    p.style.top = (60 + Math.random() * 40) + '%';
+    p.style.animationDelay = (Math.random() * 8) + 's';
+    p.style.animationDuration = (6 + Math.random() * 6) + 's';
+    el.appendChild(p);
+  }
+}
+
+// ── Step dots ──
+function initDots() {
+  var wrap = document.getElementById('step-dots');
+  for (var i = 0; i < 6; i++) {
+    var d = document.createElement('div');
+    d.className = 'step-dot';
+    d.id = 'dot-' + i;
+    wrap.appendChild(d);
+  }
+}
+
+function setActiveDot(idx) {
+  for (var i = 0; i < 6; i++) {
+    var d = document.getElementById('dot-' + i);
+    if (i === idx) d.classList.add('active');
+    else d.classList.remove('active');
+  }
+}
+
+// ── Stage management ──
+function showStage(id) {
+  document.querySelectorAll('.stage').forEach(function(s) { s.classList.remove('active'); });
+  document.getElementById(id).classList.add('active');
+  setActiveDot(STAGES.indexOf(id));
+}
+
+// ── Ensemble bars ──
+function buildEnsembleBars() {
+  var container = document.getElementById('ensemble-bars');
+  container.innerHTML = '';
+  // 31 members, heights represent temperature predictions
+  // Members above 72F get highlighted
+  var temps = [
+    66,67,68,69,69,70,70,71,71,71,
+    72,72,72,73,73,73,73,74,74,74,
+    74,75,75,75,76,76,77,77,78,79,80
+  ];
+  var minT = 62, maxT = 84;
+  for (var i = 0; i < temps.length; i++) {
+    var bar = document.createElement('div');
+    bar.className = 'ensemble-bar';
+    if (temps[i] > 72) bar.classList.add('highlight');
+    bar.style.height = '0px';
+    bar.dataset.targetHeight = ((temps[i] - minT) / (maxT - minT) * 100) + '%';
+    container.appendChild(bar);
+  }
+}
+
+function animateEnsembleBars() {
+  var bars = document.querySelectorAll('.ensemble-bar');
+  bars.forEach(function(bar, i) {
+    setTimeout(function() {
+      bar.style.height = bar.dataset.targetHeight;
+    }, i * 30);
+  });
+  setTimeout(function() {
+    document.getElementById('prob-result').textContent = 'P(High > 72\u00B0F) = 68%';
+  }, 1200);
+}
+
+// ── Main timeline ──
+function runTimeline() {
+  var started = performance.now();
+  var triggered = {};
+
+  function once(key, fn) {
+    if (!triggered[key]) { triggered[key] = true; fn(); }
+  }
+
+  function tick() {
+    var elapsed = (performance.now() - started) / 1000;
+
+    // Stage 1: Intro
+    if (elapsed >= T.introIn && elapsed < T.introOut) {
+      once('intro', function() { showStage('s-intro'); });
+    }
+
+    // Stage 2: The Edge
+    if (elapsed >= T.edgeIn && elapsed < T.edgeOut) {
+      once('edge', function() {
+        showStage('s-edge');
+        setTimeout(function() {
+          document.getElementById('forecast-panel').classList.add('visible');
+          animateEnsembleBars();
+        }, 200);
+        setTimeout(function() {
+          document.getElementById('market-panel').classList.add('visible');
+        }, 1200);
+        setTimeout(function() {
+          document.getElementById('edge-arrow').classList.add('visible');
+        }, 2500);
+        setTimeout(function() {
+          document.getElementById('edge-label').classList.add('visible');
+        }, 3500);
+      });
+    }
+
+    // Stage 3: Signal Card
+    if (elapsed >= T.signalIn && elapsed < T.signalOut) {
+      once('signal', function() {
+        showStage('s-signal');
+        setTimeout(function() {
+          document.getElementById('signal-wrap').classList.add('visible');
+        }, 300);
+        setTimeout(function() {
+          document.getElementById('trade-btn').classList.add('visible');
+        }, 2000);
+        setTimeout(function() {
+          document.getElementById('signal-label').classList.add('visible');
+        }, 3000);
+      });
+    }
+
+    // Stage 4: Polymarket Flow
+    if (elapsed >= T.polyIn && elapsed < T.polyOut) {
+      once('poly', function() {
+        showStage('s-polymarket');
+        setTimeout(function() {
+          document.getElementById('poly-mock').classList.add('visible');
+        }, 300);
+        // Highlight YES button
+        setTimeout(function() {
+          document.getElementById('poly-yes-btn').classList.add('selected');
+        }, 2500);
+        // Show order form
+        setTimeout(function() {
+          document.getElementById('poly-order').classList.add('visible');
+        }, 4500);
+        // Show confirmation
+        setTimeout(function() {
+          document.getElementById('poly-confirm').classList.add('visible');
+        }, 7000);
+        setTimeout(function() {
+          document.getElementById('poly-label').classList.add('visible');
+        }, 8000);
+      });
+    }
+
+    // Stage 5: Settlement
+    if (elapsed >= T.settleIn && elapsed < T.settleOut) {
+      once('settle', function() {
+        showStage('s-settle');
+        setTimeout(function() {
+          document.getElementById('therm-wrap').classList.add('visible');
+        }, 300);
+        // Animate thermometer fill (74F out of 56-80 range = ~75%)
+        setTimeout(function() {
+          document.getElementById('therm-fill').style.height = '75%';
+        }, 800);
+        // Show actual temp
+        setTimeout(function() {
+          document.getElementById('temp-actual').classList.add('visible');
+        }, 2500);
+        // Bracket check
+        setTimeout(function() {
+          document.getElementById('bracket-check').classList.add('visible');
+        }, 3500);
+        // Result
+        setTimeout(function() {
+          document.getElementById('result-won').classList.add('visible');
+        }, 4800);
+        // P&L
+        setTimeout(function() {
+          document.getElementById('pnl-calc').classList.add('visible');
+        }, 5800);
+        setTimeout(function() {
+          document.getElementById('settle-label').classList.add('visible');
+        }, 6500);
+      });
+    }
+
+    // Stage 6: Summary
+    if (elapsed >= T.sumIn && elapsed < T.sumOut) {
+      once('sum', function() {
+        showStage('s-summary');
+        var stats = document.querySelectorAll('.sum-stat');
+        stats.forEach(function(s, i) {
+          setTimeout(function() { s.classList.add('visible'); }, i * 400);
+        });
+        setTimeout(function() {
+          document.getElementById('sum-cities').classList.add('visible');
+        }, 1600);
+        setTimeout(function() {
+          document.getElementById('sum-refresh').classList.add('visible');
+        }, 2200);
+        setTimeout(function() {
+          document.getElementById('sum-cta').classList.add('visible');
+        }, 3000);
+      });
+    }
+
+    // Loop
+    if (elapsed >= T.loop) {
+      cancelAnimationFrame(animFrame);
+      resetAll();
+      runTimeline();
+      return;
+    }
+
+    animFrame = requestAnimationFrame(tick);
+  }
+
+  animFrame = requestAnimationFrame(tick);
+}
+
+function resetAll() {
+  document.querySelectorAll('.stage').forEach(function(s) { s.classList.remove('active'); });
+  // Reset edge stage
+  document.getElementById('forecast-panel').classList.remove('visible');
+  document.getElementById('market-panel').classList.remove('visible');
+  document.getElementById('edge-arrow').classList.remove('visible');
+  document.getElementById('edge-label').classList.remove('visible');
+  document.getElementById('prob-result').textContent = '';
+  var bars = document.querySelectorAll('.ensemble-bar');
+  bars.forEach(function(b) { b.style.height = '0px'; });
+  // Reset signal
+  document.getElementById('signal-wrap').classList.remove('visible');
+  document.getElementById('trade-btn').classList.remove('visible');
+  document.getElementById('signal-label').classList.remove('visible');
+  // Reset polymarket
+  document.getElementById('poly-mock').classList.remove('visible');
+  document.getElementById('poly-yes-btn').classList.remove('selected');
+  document.getElementById('poly-order').classList.remove('visible');
+  document.getElementById('poly-confirm').classList.remove('visible');
+  document.getElementById('poly-label').classList.remove('visible');
+  // Reset settlement
+  document.getElementById('therm-wrap').classList.remove('visible');
+  document.getElementById('therm-fill').style.height = '0%';
+  document.getElementById('temp-actual').classList.remove('visible');
+  document.getElementById('bracket-check').classList.remove('visible');
+  document.getElementById('result-won').classList.remove('visible');
+  document.getElementById('pnl-calc').classList.remove('visible');
+  document.getElementById('settle-label').classList.remove('visible');
+  // Reset summary
+  document.querySelectorAll('.sum-stat').forEach(function(s) { s.classList.remove('visible'); });
+  document.getElementById('sum-cities').classList.remove('visible');
+  document.getElementById('sum-refresh').classList.remove('visible');
+  document.getElementById('sum-cta').classList.remove('visible');
+  // Reset dots
+  document.querySelectorAll('.step-dot').forEach(function(d) { d.classList.remove('active'); });
+}
+
+// ── Init ──
+initParticles();
+initDots();
+buildEnsembleBars();
+runTimeline();
+</script>
+</body>
+</html>
