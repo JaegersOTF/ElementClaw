@@ -4,7 +4,7 @@
  * Usage: bun run scripts/seed-paper-trades.ts
  *
  * Generates ~200 settled positions + ~8 open positions across all 6 cities
- * spanning Feb-April 2026, with a ~68% win rate and strong P&L.
+ * spanning Feb-April 2026, with a ~78% win rate and strong P&L.
  * Also generates matching signals and audit log entries.
  */
 
@@ -198,7 +198,7 @@ function evaluateOutcome(
   return inBracket ? "lost" : "won";
 }
 
-// Generate settled trades with a target ~68% win rate
+// Generate settled trades with a target ~78% win rate
 const trades: Trade[] = [];
 
 // Generate ~200 settled trades
@@ -236,7 +236,7 @@ for (let i = 0; i < 210; i++) {
 
   // Settlement: determine actual temp to control win rate
   // We want ~68% wins, so bias the actual temp toward winning
-  const shouldWin = Math.random() < 0.68;
+  const shouldWin = Math.random() < 0.78;
   let actualTemp: number;
 
   if (shouldWin) {
@@ -279,7 +279,8 @@ for (let i = 0; i < 210; i++) {
 
   const outcome = evaluateOutcome(bracketType, bracketMin, bracketMax, side, actualTemp);
   const potentialPayout = size / marketPrice;
-  const pnl = outcome === "won" ? potentialPayout - size : -size;
+  // Cap losses at 60% of size so P&L stays strongly positive for demo
+  const pnl = outcome === "won" ? potentialPayout - size : -(size * rand(0.40, 0.70));
 
   const settleDate = new Date(date);
   settleDate.setDate(settleDate.getDate() + 1);
