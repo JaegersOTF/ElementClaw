@@ -11,7 +11,7 @@ import { initRiskState } from "../engine/risk.js";
 import { checkSettlements } from "../settlement/tracker.js";
 import { getOpenPositions, getStats } from "../store/db.js";
 
-async function main() {
+export async function runSettle() {
   logger.info("settle: starting");
 
   initRiskState();
@@ -19,7 +19,7 @@ async function main() {
   const openBefore = getOpenPositions();
   if (openBefore.length === 0) {
     logger.info("settle: no open positions to check");
-    process.exit(0);
+    return;
   }
 
   logger.info({ openPositions: openBefore.length }, "settle: checking settlements");
@@ -41,11 +41,14 @@ async function main() {
     },
     "settle: complete",
   );
-
-  process.exit(0);
+}
+async function main() {
+  await runSettle();
 }
 
-main().catch((err) => {
-  logger.fatal({ err }, "settle: fatal error");
-  process.exit(1);
-});
+if (import.meta.main) {
+  main().catch((err) => {
+    logger.fatal({ err }, "settle: fatal error");
+    process.exit(1);
+  });
+}

@@ -16,10 +16,8 @@ function getConfidence(edge: number, consensusConfidence?: string): Signal["conf
   return "NEAR-SAFE";
 }
 
-const DEFAULT_MAX_PER_CITY = 2; // max open positions across all dates for one city
-const DEFAULT_MAX_PER_CITY_DATE = 2; // max open positions for one city on one date
-const MAX_PER_CITY = Number(process.env.MAX_PER_CITY ?? DEFAULT_MAX_PER_CITY);
-const MAX_PER_CITY_DATE = Number(process.env.MAX_PER_CITY_DATE ?? DEFAULT_MAX_PER_CITY_DATE);
+const MAX_PER_CITY = 2; // max open positions across all dates for one city
+const MAX_PER_CITY_DATE = 1; // max open positions for one city on one date
 
 function applyConcentrationFilter(
   signals: Signal[],
@@ -27,10 +25,6 @@ function applyConcentrationFilter(
 ): Signal[] {
   const cityCount = new Map<string, number>();
   const cityDateCount = new Map<string, number>();
-  const keptCityCount = new Map<string, number>();
-  const keptCityDateCount = new Map<string, number>();
-  let rejectedByCity = 0;
-  let rejectedByCityDate = 0;
 
   for (const p of openPositions) {
     cityCount.set(p.city, (cityCount.get(p.city) ?? 0) + 1);
@@ -45,35 +39,14 @@ function applyConcentrationFilter(
     const date = signal.market.date;
     const cityDateKey = `${city}::${date}`;
 
-  if ((cityCount.get(city) ?? 0) >= MAX_PER_CITY) {
-    rejectedByCity++;
-    continue;
-  }
+    if ((cityCount.get(city) ?? 0) >= MAX_PER_CITY) continue;
+    if ((cityDateCount.get(cityDateKey) ?? 0) >= MAX_PER_CITY_DATE) continue;
 
-  if ((cityDateCount.get(cityDateKey) ?? 0) >= MAX_PER_CITY_DATE) {
-    rejectedByCityDate++;
-    continue;
-  }
     accepted.push(signal);
-    keptCityCount.set(city, (keptCityCount.get(city) ?? 0) + 1);
-    keptCityDateCount.set(cityDateKey, (keptCityDateCount.get(cityDateKey) ?? 0) + 1);
     cityCount.set(city, (cityCount.get(city) ?? 0) + 1);
     cityDateCount.set(cityDateKey, (cityDateCount.get(cityDateKey) ?? 0) + 1);
   }
-const SHOW_CONCENTRATION_DEBUG = process.env.SHOW_CONCENTRATION_DEBUG === 'true';
-if (SHOW_CONCENTRATION_DEBUG) {  
-  console.log('[signals] concentration filter summary');
-  console.log(`  candidates_before=${signals.length}`);
-  console.log(`  accepted_after=${accepted.length}`);
-  console.log(`  rejected_by_city=${rejectedByCity}`);
-  console.log(`  rejected_by_city_date=${rejectedByCityDate}`);
-  console.log(
-  `  kept_cities=${JSON.stringify(Object.fromEntries(keptCityCount))}`
-);
-  console.log(
-  `  kept_city_dates=${JSON.stringify(Object.fromEntries(keptCityDateCount))}`
-);
-}
+
   return accepted;
 } 
 /**

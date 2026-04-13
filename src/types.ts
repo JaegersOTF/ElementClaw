@@ -125,6 +125,35 @@ export interface CLIReport {
   low: number; // Fahrenheit
 }
 
+export interface SettledTradeRecord {
+  positionId: string;
+  signalId: string;
+  conditionId: string;
+
+  city: string;
+  date: string;
+  metric: "high" | "low";
+  bracketMin: number;
+  bracketMax: number;
+  bracketType: "above" | "below" | "between";
+  side: "YES" | "NO";
+
+  entryPrice: number;
+  size: number;
+  potentialPayout: number;
+  modelProbability: number;
+  edge: number;
+
+  entryTime: number;
+  settleTime: number;
+  holdDurationHours: number;
+
+  actualTemp: number;
+  outcome: "won" | "lost";
+  pnl: number;
+
+  orderId?: string;
+}
 // --- Config ---
 
 export interface AppConfig {

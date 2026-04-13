@@ -4,15 +4,48 @@ import { readAuditLog, verifyAuditLog, verifyEntry } from "../engine/audit.js";
 import { logger } from "../logger.js";
 import { resolve, dirname } from "path";
 import { fileURLToPath } from "url";
-
+import { runScan } from "../commands/scan.js";
+import { runSettle } from "../commands/settle.js";
 const PORT = 3456;
 const PROJECT_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
+const SCAN_INTERVAL_MS = 15 * 60 * 1000;
+const SETTLE_INTERVAL_MS = 60 * 60 * 1000;
 
 /**
  * Simple web dashboard served by Bun.
  * Reads from SQLite, renders equity curve + positions + stats.
  */
+function schedulePaperJobs(): void {
+  logger.info(
+    {
+      scanIntervalMinutes: SCAN_INTERVAL_MS / 60000,
+      settleIntervalMinutes: SETTLE_INTERVAL_MS / 60000,
+    },
+    "Paper job scheduler started",
+  );
+
+  void runScan().catch((err) => {
+  logger.error({ err }, "Scheduled scan failed");
+});
+  void runSettle().catch((err) => {
+  logger.error({ err }, "Scheduled settle failed");
+});
+setInterval(() => {
+  void runScan().catch((err) => {
+    logger.error({ err }, "Scheduled scan failed");
+  });
+}, SCAN_INTERVAL_MS);
+
+setInterval(() => {
+  void runSettle().catch((err) => {
+    logger.error({ err }, "Scheduled settle failed");
+  });
+}, SETTLE_INTERVAL_MS);
+}
+
 export function startWebDashboard(): void {
+  schedulePaperJobs();
+  
   Bun.serve({
     port: PORT,
     fetch(req) {

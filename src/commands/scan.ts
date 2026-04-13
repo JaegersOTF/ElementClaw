@@ -17,9 +17,17 @@ import { executeSignal } from "../market/execution.js";
 import { insertSignal, insertPosition, getOpenPositions } from "../store/db.js";
 import { checkRiskLimits, initRiskState } from "../engine/risk.js";
 
-async function main() {
+export async function runScan() {
   const config = loadConfig();
   logger.info({ mode: config.mode }, "scan: starting");
+  logger.info(
+  {
+    maxPerCity: Number(process.env.MAX_PER_CITY ?? 2),
+    maxPerCityDate: Number(process.env.MAX_PER_CITY_DATE ?? 2),
+    showConcentrationDebug: process.env.SHOW_CONCENTRATION_DEBUG === 'true',
+  },
+  'scan: concentration settings'
+);
 
   initRiskState();
 
@@ -38,12 +46,18 @@ async function main() {
 
   if (risk.circuitBroken) {
     logger.warn("scan: circuit breaker active — no trades");
-    process.exit(0);
+    return;
   }
 
   if (openPositions.length >= config.maxOpenPositions) {
-    logger.info({ open: openPositions.length }, "scan: max positions reached");
-    process.exit(0);
+    logger.info(
+  {
+    open: openPositions.length,
+    concentrationSummary: `${openPositions.length}/${config.maxOpenPositions} open, per-city <= ${Number(process.env.MAX_PER_CITY ?? 2)}, per-city-date <= ${Number(process.env.MAX_PER_CITY_DATE ?? 2)}`,
+  },
+  "scan: max positions reached"
+);
+    return;
   }
 
   // 4. Generate signals
@@ -76,11 +90,23 @@ async function main() {
     }
   }
 
-  logger.info({ executed, totalOpen: openPositions.length + executed }, "scan: complete");
-  process.exit(0);
+  logger.info(
+  {
+    executed,
+    totalOpen: openPositions.length + executed,
+    concentrationSummary: `${openPositions.length + executed}/${config.maxOpenPositions} open, per-city <= ${Number(process.env.MAX_PER_CITY ?? 2)}, per-city-date <= ${Number(process.env.MAX_PER_CITY_DATE ?? 2)}`,
+  },
+  "scan: complete"
+);
 }
 
-main().catch((err) => {
-  logger.fatal({ err }, "scan: fatal error");
-  process.exit(1);
-});
+async function main() {
+  await runScan();
+}
+
+if (import.meta.main) {
+  main().catch((err) => {
+    logger.fatal({ err }, "scan: fatal error");
+    process.exit(1);
+  });
+}
